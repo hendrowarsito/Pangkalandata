@@ -1,95 +1,99 @@
 import pandas as pd
 import streamlit as st
 import folium
+from folium.plugins import MarkerCluster
 from streamlit_folium import st_folium
 
-# **Mengatur tampilan agar memenuhi layar**
 st.set_page_config(layout="wide")
-
 st.title("📍 Pangkalan Data Tanah KJPP Suwendho Rinaldy dan Rekan 🏡")
 
-# Fungsi untuk memformat angka ke mata uang Rupiah
+# cache the Excel load so it only runs once per file upload
+@st.cache_data(show_spinner=False)
+def load_data(uploaded_file):
+    df = pd.read_excel(uploaded_file)
+    # ensure numeric lat/lon
+    df["Latitude"] = pd.to_numeric(df["Latitude"], errors="coerce")
+    df["Longitude"] = pd.to_numeric(df["Longitude"], errors="coerce")
+    return df
+
 def format_currency(value):
-    return f"Rp {value:,.0f}".replace(',', '.')
+    return f"Rp {value:,.0f}".replace(",", ".")
 
-# Upload file Excel
 file = st.file_uploader("📂 Unggah file Excel berisi data tanah", type=["xlsx"])
+if not file:
+    st.info("Silakan unggah file Excel untuk melanjutkan.")
+    st.stop()
 
-if file is not None:
-    # Membaca file Excel yang diunggah
-    df = pd.read_excel(file)
+df = load_data(file)
 
-    # Validasi apakah file memiliki kolom yang diperlukan
-    required_columns = {"Kota", "Harga_Tanah", "Latitude", "Longitude"}
-    if not required_columns.issubset(df.columns):
-        st.error("❌ File Excel harus memiliki kolom: Kota, Harga_Tanah, Latitude, Longitude")
-        st.stop()
+required = {"Kota","Harga_Tanah","Latitude","Longitude"}
+if not required.issubset(df.columns):
+    st.error(f"❌ File harus punya kolom: {', '.join(required)}")
+    st.stop()
 
-    # Input untuk pencarian kota
-    name_input = st.text_input("🔍 Masukkan nama kota untuk mencari data:")
+city = st.text_input("🔍 Masukkan nama kota untuk mencari data:")
+filtered = df[df["Kota"].str.strip().str.lower() == city.strip().lower()] if city else df
 
-    # Filter data berdasarkan input pengguna
-    filtered_data = df[df['Kota'].str.contains(name_input, case=False, na=False)] if name_input else df
+st.dataframe(filtered, use_container_width=True)
 
-    st.dataframe(filtered_data, use_container_width=True)
+st.subheader("📌 Peta Lokasi Properti")
 
-    # **Menampilkan peta dan tabel properti secara lebar**
-    col1, col2 = st.columns([3, 2])  # Peta lebih besar (3 bagian) | Tabel properti lebih kecil (2 bagian)
+# Center map
+if not filtered.empty:
+    lat0, lon0 = filtered["Latitude"].mean(), filtered["Longitude"].mean()
+else:
+    lat0, lon0 = -2.548926, 118.0148634
 
-    with col1:
-        st.subheader("📌 Peta Lokasi Properti")
+m = folium.Map(location=[lat0, lon0], zoom_start=10 if city else 5)
 
-        # **Menentukan pusat peta berdasarkan kota yang dicari**
-        if not filtered_data.empty:
-            lat_center = filtered_data["Latitude"].mean()
-            lon_center = filtered_data["Longitude"].mean()
-        else:
-            lat_center, lon_center = -2.548926, 118.0148634  # Default Indonesia jika tidak ditemukan
 
-        # **Cegah error jika lat_center atau lon_center NaN**
-        if pd.isna(lat_center) or pd.isna(lon_center):
-            lat_center, lon_center = -2.548926, 118.0148634  # Default Indonesia
+# Warna berdasarkan tahun
+def get_color_by_year(year):
+    if year >= 2025:
+        return "green"
+    elif year >= 2024:
+        return "blue"
+    elif year >= 2023:
+        return "orange"
+    else:
+        return "red"
 
-        # Inisialisasi peta dengan pusat berdasarkan pencarian kota
-        m = folium.Map(location=[lat_center, lon_center], zoom_start=10 if name_input else 5)
+# Tambahkan marker langsung (tanpa cluster)
+for r in filtered.itertuples():
+    if pd.notna(r.Latitude) and pd.notna(r.Longitude):
+        tahun = getattr(r, "Tahun", 0)  # asumsi kolom 'Tahun' ada
+        warna = get_color_by_year(tahun)
+        
+        tooltip = (
+            f"{r.Nomor_Data}<br>"
+            f"{r.Kelurahan}<br>"
+            f"{r.Kecamatan}<br>"
+            f"{r.Kota}<br>"
+            f"Harga Tanah: <b>{format_currency(r.Harga_Tanah)}</b>/m²"
+        )
+        # 1. Marker biasa
+        folium.Marker(
+            location=[r.Latitude, r.Longitude],
+            tooltip=tooltip,
+            icon=folium.Icon(color=warna)
+        ).add_to(m)
 
-        # Menambahkan marker berdasarkan data yang diunggah
-        for index, row in df.iterrows():
-            if not pd.isna(row['Latitude']) and not pd.isna(row['Longitude']):
-                formatted_price = format_currency(row['Harga_Tanah'])
-                folium.Marker(
-                    location=[row['Latitude'], row['Longitude']],
-                    popup=f"<b>{row['Kota']}</b><br>Harga Tanah: <b>{formatted_price}</b>/m²",
-                    tooltip=row['Kota']
-                ).add_to(m)
+        # 2. Label tetap tampil (DivIcon)
+        folium.map.Marker(
+            [r.Latitude, r.Longitude],
+            icon=folium.DivIcon(
+                html=f"""
+                <div style='font-size:12px;
+                            color:{warna};
+                            font-weight:bold;
+                            background-color:None;
+                            padding:2px 4px;
+                            border-radius:4px;
+                            white-space: nowrap;'>
+                    {f"<b>{format_currency(r.Harga_Tanah)}</b>/m²"}
+                </div>
+                """
+            )
+        ).add_to(m)
 
-        # Menampilkan peta dalam Streamlit
-        map_data = st_folium(m, width=1200, height=600)
-
-    with col2:
-        st.subheader("📋 Data Properti di Peta")
-
-        # Menampilkan data properti dalam batas tampilan peta
-        if map_data and "bounds" in map_data and map_data["bounds"]:
-            bounds = map_data["bounds"]
-            if "_southWest" in bounds and "_northEast" in bounds:
-                lat_min = bounds["_southWest"]["lat"]
-                lat_max = bounds["_northEast"]["lat"]
-                lon_min = bounds["_southWest"]["lng"]
-                lon_max = bounds["_northEast"]["lng"]
-
-                # Filter properti dalam tampilan peta
-                visible_data = df[
-                    (df["Latitude"] >= lat_min) & (df["Latitude"] <= lat_max) &
-                    (df["Longitude"] >= lon_min) & (df["Longitude"] <= lon_max)
-                ].copy()
-
-                if not visible_data.empty:
-                    visible_data["Harga Tanah (Rp/m²)"] = visible_data["Harga_Tanah"].apply(format_currency)
-                    st.dataframe(visible_data[["Kota", "Harga Tanah (Rp/m²)", "Latitude", "Longitude"]], use_container_width=True)
-                else:
-                    st.write("🔍 Tidak ada properti yang terlihat pada peta.")
-            else:
-                st.write("⚠ Struktur bounds tidak sesuai. Silakan zoom atau geser peta.")
-        else:
-            st.write("📍 Pindahkan atau zoom peta untuk menampilkan data properti.")
+st_folium(m, width=1500, height=700)
