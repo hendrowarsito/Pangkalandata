@@ -96,10 +96,11 @@ def get_color_by_year(year):
 for r in filtered.itertuples():
     if pd.notna(r.Latitude) and pd.notna(r.Longitude):
         tahun = getattr(r, "Tahun", 0)  # asumsi kolom 'Tahun' ada
+        # Penyesuaian warna dan link
         nomor = str(getattr(r, "Nomor", "")).strip()
         warna = get_color_by_year(tahun)
         warna_teks = "red" if nomor.lower() == "obyek penilaian" else warna
-        foto_link = getattr(r, "Foto", "#")  # ambil dari kolom Foto, fallback ke "#" jika kosong
+        foto_link = getattr(r, "Foto", "#") or "#"
         popup = (
             f"<b>{r.Kontak}</b><br>"
             f"<b>{r.Telp}</b><br>"
@@ -129,17 +130,19 @@ for r in filtered.itertuples():
             [r.Latitude, r.Longitude],
             icon=folium.DivIcon(
                 html=f"""
-                    <div style='font-size:12px;
-                                color:{warna_teks};
-                                font-weight:bold;
-                                background-color:None;
-                                padding:2px 4px;
-                                border-radius:4px;
-                                white-space: nowrap;'>
-                        <b>{format_currency(r.Harga_Tanah)}</b>/m²
-                        <a href="{foto_link}" target="_blank" style="color:{warna_teks}; text-decoration:underline;">({nomor})</a>
-                    </div>
-                    """
+                <div style='font-size:12px;
+                            color:{warna_teks};
+                            font-weight:bold;
+                            background-color:transparent;
+                            padding:2px 4px;
+                            border-radius:4px;
+                            white-space: nowrap;'>
+                    {format_currency(r.Harga_Tanah)}/m²
+                    <br><a href="{foto_link}" target="_blank" style="color:{warna_teks}; text-decoration:underline;">
+                        {nomor}
+                    </a>
+                </div>
+                """
             )
         ).add_to(m)
 
