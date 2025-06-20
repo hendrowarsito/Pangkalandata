@@ -96,13 +96,9 @@ def get_color_by_year(year):
 for r in filtered.itertuples():
     if pd.notna(r.Latitude) and pd.notna(r.Longitude):
         tahun = getattr(r, "Tahun", 0)  # asumsi kolom 'Tahun' ada
-        try:
-            nomor = str(getattr(r, "Nomor", "")).strip()
-            warna_teks = "red" if nomor.lower() == "obyek penilaian" else warna
-            harga = format_currency(r.Harga_Tanah)
-        except Exception as e:
-            st.error(f"⚠️ Error pada marker {getattr(r, 'Nomor', 'Tanpa Nomor')}: {e}")
-            continue
+        nomor = str(getattr(r, "Nomor", "")).strip()
+        warna = get_color_by_year(tahun)
+        warna_teks = "red" if nomor.lower() == "obyek penilaian" else warna
         foto_link = getattr(r, "Foto", "#")  # ambil dari kolom Foto, fallback ke "#" jika kosong
         popup = (
             f"<b>{r.Kontak}</b><br>"
@@ -148,3 +144,4 @@ for r in filtered.itertuples():
         ).add_to(m)
 
 st_folium(m, width=1500, height=700)
+
