@@ -26,10 +26,6 @@ if not file:
 
 df = load_data(file)
 
-required = {"Kota","Harga_Tanah","Latitude","Longitude"}
-if not required.issubset(df.columns):
-    st.error(f"❌ File harus punya kolom: {', '.join(required)}")
-    st.stop()
 
 # Bersihkan kolom Tahun agar jadi integer
 def bersihkan_tahun(val):
@@ -71,8 +67,19 @@ if not filtered.empty:
 else:
     lat0, lon0 = -2.548926, 118.0148634
 
-m = folium.Map(location=[lat0, lon0], zoom_start=10 if city else 5)
+m = folium.Map(
+    location=[lat0, lon0],
+    zoom_start=5 if city else 5,
+    min_zoom=5,
+    max_zoom=18,
+    prefer_canvas=True,
+    scrollWheelZoom=True,
+    control_scale=True
+)
 
+folium.TileLayer('OpenStreetMap', name='OpenStreetMap').add_to(m)
+folium.TileLayer('Stamen Terrain', name='Terrain', attr='Map tiles by Stamen Design, under CC BY 3.0. Data by OpenStreetMap, under ODbL.').add_to(m)
+folium.LayerControl().add_to(m)
 
 # Warna berdasarkan tahun
 def get_color_by_year(year):
@@ -89,22 +96,24 @@ def get_color_by_year(year):
 for r in filtered.itertuples():
     if pd.notna(r.Latitude) and pd.notna(r.Longitude):
         tahun = getattr(r, "Tahun", 0)  # asumsi kolom 'Tahun' ada
+        nomor = str(getattr(r, "Nomor", "")).strip()
         warna = get_color_by_year(tahun)
+        warna_teks = "red" if nomor.lower() == "obyek penilaian" else warna
+        foto_link = getattr(r, "Foto", "#")  # ambil dari kolom Foto, fallback ke "#" jika kosong
         popup = (
-            f"<b>{r.Jenis_Data}<br>"
             f"<b>{r.Kontak}</b><br>"
             f"<b>{r.Telp}</b><br>"
             
         )
         tooltip = (
-            f"{r.Jenis_Data}<br>"
+            f"{r.Nomor}</b><br>"
             f"Tahun: {tahun}<br>"
-            f"{r.Alamat}</b><br>"
-            f"{r.Kelurahan}<br>"
-            f"{r.Kecamatan}<br>"
-            f"{r.Kota}<br>"
-            f"{r.Kontak}</b><br>"
-            f"{r.Telp}</b><br>"
+            f"Alamat: {r.Alamat}</b><br>"
+            f"Kelurahan: {r.Kelurahan}<br>"
+            f"Kecamatan: {r.Kecamatan}<br>"
+            f"Kota: {r.Kota}<br>"
+            f"Luas: Tanah {r.Luas_Tanah}</b> m²<br>"
+            f"Luas Bangunan: {r.Luas_Bangunan}</b> m²<br>"
             f"Harga Tanah: <b>{format_currency(r.Harga_Tanah)}</b>/m²"
         )
         # 1. Marker biasa
@@ -120,16 +129,17 @@ for r in filtered.itertuples():
             [r.Latitude, r.Longitude],
             icon=folium.DivIcon(
                 html=f"""
-                <div style='font-size:12px;
-                            color:{warna};
-                            font-weight:bold;
-                            background-color:None;
-                            padding:2px 4px;
-                            border-radius:4px;
-                            white-space: nowrap;'>
-                    {f"<b>{format_currency(r.Harga_Tanah)}</b>/m²"}
-                </div>
-                """
+                    <div style='font-size:12px;
+                                color:{warna_teks};
+                                font-weight:bold;
+                                background-color:None;
+                                padding:2px 4px;
+                                border-radius:4px;
+                                white-space: nowrap;'>
+                        <b>{format_currency(r.Harga_Tanah)}</b>/m²
+                        <a href="{foto_link}" target="_blank" style="color:{warna_teks}; text-decoration:underline;">({nomor})</a>
+                    </div>
+                    """
             )
         ).add_to(m)
 
