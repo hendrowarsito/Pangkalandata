@@ -166,5 +166,5 @@ for r in filtered.itertuples():
             )
         ).add_to(m)
 
-st_folium(m, width=1600, height=700)
+st_folium(m, width=1400, height=700)
 
