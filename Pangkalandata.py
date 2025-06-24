@@ -4,8 +4,10 @@ import folium
 from folium.plugins import MarkerCluster
 from streamlit_folium import st_folium
 
+st.set_page_config(layout="wide", initial_sidebar_state="expanded")
+
 # Sidebar input
-st.title("Pangkalan Data Tanah KJPP Suwendho Rinaldy dan Rekan 🏡")
+st.sidebar.markdown("Pangkalan Data Tanah KJPP Suwendho Rinaldy dan Rekan 🏡")
 st.sidebar.header("🔧 Filter Data")
 file = st.sidebar.file_uploader("📂 Unggah file Excel berisi data tanah", type=["xlsx"])
 
