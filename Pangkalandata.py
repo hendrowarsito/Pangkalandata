@@ -4,7 +4,7 @@ import folium
 from folium.plugins import MarkerCluster
 from streamlit_folium import st_folium
 
-st.set_page_config(layout="wide")
+st.set_page_config(layout="wide", initial_sidebar_state="expanded")
 st.title("📍 Pangkalan Data Tanah KJPP Suwendho Rinaldy dan Rekan 🏡")
 
 # Sidebar input
@@ -77,7 +77,7 @@ with peta_tab:
 
     m = folium.Map(
         location=[lat0, lon0],
-        zoom_start=5,
+        zoom_start=8,
         min_zoom=5,
         max_zoom=18,
         prefer_canvas=True,
@@ -87,9 +87,9 @@ with peta_tab:
 
     folium.TileLayer('OpenStreetMap', name='OpenStreetMap', control=True).add_to(m)
     folium.TileLayer(
-        tiles='https://stamen-tiles.a.ssl.fastly.net/terrain/{z}/{x}/{y}.jpg',
-        name='Terrain',
-        attr='Map tiles by Stamen Design, under CC BY 3.0.',
+        tiles='https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+        name='Voyager Terrain',
+        attr='©OpenStreetMap contributors ©CartoDB',
         overlay=False,
         control=True
     ).add_to(m)
