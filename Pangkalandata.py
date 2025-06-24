@@ -70,7 +70,7 @@ else:
 m = folium.Map(
     location=[lat0, lon0],
     zoom_start=5 if city else 5,
-    min_zoom=5,
+    min_zoom=1,
     max_zoom=18,
     prefer_canvas=True,
     scrollWheelZoom=True,
@@ -166,5 +166,5 @@ for r in filtered.itertuples():
             )
         ).add_to(m)
 
-st_folium(m, width=1500, height=700)
+st_folium(m, width=1600, height=700)
 
