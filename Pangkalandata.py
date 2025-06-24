@@ -77,9 +77,29 @@ m = folium.Map(
     control_scale=True
 )
 
+# Tambahkan beberapa layer
 folium.TileLayer('OpenStreetMap', name='OpenStreetMap').add_to(m)
-folium.TileLayer('Stamen Terrain', name='Terrain', attr='Map tiles by Stamen Design, under CC BY 3.0. Data by OpenStreetMap, under ODbL.').add_to(m)
-folium.LayerControl().add_to(m)
+
+# Terrain Layer (Stamen Terrain)
+folium.TileLayer(
+    tiles='https://stamen-tiles.a.ssl.fastly.net/terrain/{z}/{x}/{y}.jpg',
+    attr='Map tiles by Stamen Design, under CC BY 3.0. Data by OpenStreetMap, under ODbL.',
+    name='Terrain',
+    overlay=False,
+    control=True
+).add_to(m)
+
+# Satellite Layer (Google Satellite via ESRI World Imagery)
+folium.TileLayer(
+    tiles='https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    attr='Tiles © Esri — Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+    name='Satellite',
+    overlay=False,
+    control=True
+).add_to(m)
+
+# Tambahkan kontrol pemilih layer
+folium.LayerControl(collapsed=False).add_to(m)
 
 # Warna berdasarkan tahun
 def get_color_by_year(year):
