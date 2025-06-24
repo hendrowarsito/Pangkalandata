@@ -69,8 +69,8 @@ else:
 
 m = folium.Map(
     location=[lat0, lon0],
-    zoom_start=5 if city else 5,
-    min_zoom=1,
+    zoom_start=5,
+    min_zoom=5,
     max_zoom=18,
     prefer_canvas=True,
     scrollWheelZoom=True,
@@ -80,25 +80,25 @@ m = folium.Map(
 # Default base map: OpenStreetMap
 folium.TileLayer('OpenStreetMap', name='OpenStreetMap', control=True).add_to(m)
 
-# Terrain Layer (Stamen Terrain)
+# Tambahan pilihan: Terrain
 folium.TileLayer(
     tiles='https://stamen-tiles.a.ssl.fastly.net/terrain/{z}/{x}/{y}.jpg',
-    attr='Map tiles by Stamen Design, under CC BY 3.0. Data by OpenStreetMap, under ODbL.',
     name='Terrain',
+    attr='Map tiles by Stamen Design, under CC BY 3.0.',
     overlay=False,
     control=True
 ).add_to(m)
 
-# Satellite Layer (Google Satellite via ESRI World Imagery)
+# Tambahan pilihan: Satellite
 folium.TileLayer(
     tiles='https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    attr='Tiles © Esri — Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
     name='Satellite',
+    attr='Tiles © Esri',
     overlay=False,
     control=True
 ).add_to(m)
 
-# Tambahkan kontrol pemilih layer
+# Layer control (dropdown layer chooser)
 folium.LayerControl(collapsed=False).add_to(m)
 
 # Warna berdasarkan tahun
