@@ -8,7 +8,7 @@ import os
 st.set_page_config(layout="wide", initial_sidebar_state="expanded")
 
 # Sidebar input
-st.sidebar.markdown(("## 📍 Pangkalan Data Tanah KJPP Suwendho Rinaldy dan Rekan 🏡")
+st.sidebar.markdown(("## Pangkalan Data Tanah KJPP Suwendho Rinaldy dan Rekan 🏡")
 st.sidebar.header("🔧 Filter Data")
 file = st.sidebar.file_uploader("📂 Unggah file Excel atau CSV data tanah", type=["xlsx", "csv"])
 
