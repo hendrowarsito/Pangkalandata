@@ -11,6 +11,11 @@ st.title("📍 Pangkalan Data Tanah KJPP Suwendho Rinaldy dan Rekan 🏡")
 st.sidebar.header("🔧 Filter Data")
 file = st.sidebar.file_uploader("📂 Unggah file Excel berisi data tanah", type=["xlsx"])
 
+# Reset tombol jika file baru diunggah
+if file and "last_file" in st.session_state and file != st.session_state["last_file"]:
+    st.session_state["tampilkan"] = False
+st.session_state["last_file"] = file
+
 if not file:
     st.sidebar.info("Silakan unggah file Excel untuk melanjutkan.")
     st.stop()
@@ -39,9 +44,16 @@ city_input = st.sidebar.text_input("🔍 Masukkan nama kota:")
 available_years = sorted([int(y) for y in df["Tahun_Bersih"].dropna().unique()], reverse=True)
 tahun_opsi = ["Semua Tahun"] + [str(t) for t in available_years]
 selected_year = st.sidebar.selectbox("📅 Pilih Tahun Data:", tahun_opsi)
-submit = st.sidebar.button("Tampilkan Data")
 
-if not submit:
+# Tombol dan session state
+if "tampilkan" not in st.session_state:
+    st.session_state["tampilkan"] = False
+
+if st.sidebar.button("Tampilkan Data"):
+    st.session_state["tampilkan"] = True
+
+if not st.session_state["tampilkan"]:
+    st.sidebar.info("Tekan tombol 'Tampilkan Data' untuk melihat hasil.")
     st.stop()
 
 city_clean = city_input.strip().lower()
