@@ -77,8 +77,8 @@ m = folium.Map(
     control_scale=True
 )
 
-# Tambahkan beberapa layer
-folium.TileLayer('OpenStreetMap', name='OpenStreetMap').add_to(m)
+# Default base map: OpenStreetMap
+folium.TileLayer('OpenStreetMap', name='OpenStreetMap', control=True).add_to(m)
 
 # Terrain Layer (Stamen Terrain)
 folium.TileLayer(
@@ -166,5 +166,5 @@ for r in filtered.itertuples():
             )
         ).add_to(m)
 
-st_folium(m, width=1400, height=700)
+st_folium(m, width=1300, height=700)
 
