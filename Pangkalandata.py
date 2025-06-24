@@ -7,7 +7,7 @@ from streamlit_folium import st_folium
 st.set_page_config(layout="wide", initial_sidebar_state="expanded")
 
 # Sidebar input
-st.sidebar.markdown("Pangkalan Data Tanah KJPP Suwendho Rinaldy dan Rekan 🏡")
+st.sidebar.markdown("## Pangkalan Data Tanah KJPP Suwendho Rinaldy dan Rekan 🏡")
 st.sidebar.header("🔧 Filter Data")
 file = st.sidebar.file_uploader("📂 Unggah file Excel berisi data tanah", type=["xlsx"])
 
@@ -162,24 +162,7 @@ with peta_tab:
                 )
             ).add_to(m)
 
-    st.markdown(
-    """
-    <style>
-        .map-frame {
-            border: 3px solid #4CAF50;
-            border-radius: 10px;
-            padding: 4px;
-            box-shadow: 2px 2px 10px rgba(0,0,0,0.1);
-            margin-bottom: 1rem;
-        }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
-
-st.markdown('<div class="map-frame">', unsafe_allow_html=True)
-st_folium(m, width=1300, height=700)
-st.markdown('</div>', unsafe_allow_html=True)
+    st_folium(m, width=1300, height=700)
 
 with tabel_tab:
     st.dataframe(filtered, use_container_width=True)
