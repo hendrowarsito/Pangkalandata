@@ -130,7 +130,7 @@ with peta_tab:
                 f"<a href='{generate_streetview_url(r.Latitude, r.Longitude)}' target='_blank'>🔍 Lihat Street View</a>"
             )
             tooltip = (
-                f"Data Pembanding {r.Nomor}</b><br>"
+                f"<b>Data Pembanding {r.Nomor}</b><br>"
                 f"<b>{r.Kontak}</b><br>"
                 f"<b>{r.Telp}</b><br>"
                 f"Tahun: {tahun}<br>"
@@ -162,7 +162,7 @@ with peta_tab:
                                 white-space: nowrap;'>
                         {format_currency(r.Harga_Tanah)}/m²
                         <br><a href=\"{foto_link}\" target=\"_blank\" style=\"color:{warna_teks}; text-decoration:underline;\">
-                            {nomor}
+                            Data Pembanding {nomor}
                         </a>
                     </div>
                     """
