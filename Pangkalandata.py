@@ -162,7 +162,7 @@ with peta_tab:
                                 white-space: nowrap;'>
                         {format_currency(r.Harga_Tanah)}/m²
                         <br><a href=\"{foto_link}\" target=\"_blank\" style=\"color:{warna_teks}; text-decoration:underline;\">
-                            Data Pembanding {nomor}
+                            Data {nomor}
                         </a>
                     </div>
                     """
