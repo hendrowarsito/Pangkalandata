@@ -123,7 +123,7 @@ with peta_tab:
             warna = get_color_by_year(tahun)
             warna_teks = "red" if nomor.lower() == "obyek penilaian" else warna
             foto_link = getattr(r, "Foto", "#") or "#"
-           
+            streetview_url = generate_streetview_url(r.Latitude, r.Longitude)
             popup = f"""
                 <b>{r.Kontak}</b><br>
                 <b>{r.Telp}</b><br>
