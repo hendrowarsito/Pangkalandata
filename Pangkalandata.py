@@ -127,12 +127,12 @@ with peta_tab:
             warna_teks = "red" if nomor.lower() == "obyek penilaian" else warna
             foto_link = getattr(r, "Foto", "#") or "#"
             popup = (
-                f"<b>{r.Kontak}</b><br>"
-                f"<b>{r.Telp}</b><br>"
                 f"<a href='{generate_streetview_url(r.Latitude, r.Longitude)}' target='_blank'>🔍 Lihat Street View</a>"
             )
             tooltip = (
-                f"{r.Nomor}</b><br>"
+                f"Data Pembanding {r.Nomor}</b><br>"
+                f"<b>{r.Kontak}</b><br>"
+                f"<b>{r.Telp}</b><br>"
                 f"Tahun: {tahun}<br>"
                 f"Alamat: {r.Alamat}</b><br>"
                 f"Kelurahan: {r.Kelurahan}<br>"
