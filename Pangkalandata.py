@@ -73,8 +73,11 @@ st.success(f"Menampilkan {len(filtered)} data untuk kota '{city_input}' dan tahu
 peta_tab, tabel_tab = st.tabs(["🗺️ Peta Lokasi", "📋 Tabel Data"])
 
 with peta_tab:
-    if not filtered.empty:
-        lat0, lon0 = filtered["Latitude"].mean(), filtered["Longitude"].mean()
+    # Ambil hanya 4 data pertama dari hasil filter
+    filtered_subset = filtered.iloc[0:4]
+
+    if not filtered_subset.empty:
+        lat0, lon0 = filtered_subset["Latitude"].mean(), filtered_subset["Longitude"].mean()
     else:
         lat0, lon0 = -2.548926, 118.0148634
 
