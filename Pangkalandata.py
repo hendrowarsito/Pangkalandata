@@ -6,6 +6,9 @@ from streamlit_folium import st_folium
 
 st.set_page_config(layout="wide", initial_sidebar_state="expanded")
 
+def generate_streetview_url(lat, lon):
+    return f"https://www.google.com/maps/@?api=1&map_action=pano&viewpoint={lat},{lon}&heading=0&pitch=0&fov=75"
+
 # Sidebar input
 st.sidebar.markdown("# Pangkalan Data Tanah KJPP Suwendho Rinaldy dan Rekan 🏡")
 st.sidebar.header("🔧 Filter Data")
@@ -123,6 +126,7 @@ with peta_tab:
             popup = (
                 f"<b>{r.Kontak}</b><br>"
                 f"<b>{r.Telp}</b><br>"
+                f"<a href='{generate_streetview_url(r.Latitude, r.Longitude)}' target='_blank'>🔍 Lihat Street View</a>"
             )
             tooltip = (
                 f"{r.Nomor}</b><br>"
