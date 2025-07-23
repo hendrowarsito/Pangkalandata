@@ -127,6 +127,7 @@ with peta_tab:
                 f"<b>{r.Kontak}</b><br>"
                 f"<b>{r.Telp}</b><br>"
                 f"<a href='{generate_streetview_url(r.Latitude, r.Longitude)}' target='_blank'>🔍 Lihat Street View</a>"
+                <button onclick="window.open('{generate_streetview_url(r.Latitude, r.Longitude)}','_blank')">Lihat Street View</button>
             )
             tooltip = (
                 f"{r.Nomor}</b><br>"
