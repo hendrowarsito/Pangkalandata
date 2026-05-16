@@ -61,6 +61,14 @@ def get_color_by_year(year):
     except Exception:
         return "gray"
 
+def haversine_km(lat1, lon1, lat2, lon2):
+    R = 6371.0
+    phi1, phi2 = np.radians(lat1), np.radians(lat2)
+    dphi = np.radians(lat2 - lat1)
+    dlam = np.radians(lon2 - lon1)
+    a = np.sin(dphi / 2) ** 2 + np.cos(phi1) * np.cos(phi2) * np.sin(dlam / 2) ** 2
+    return R * 2 * np.arctan2(np.sqrt(a), np.sqrt(1 - a))
+
 def detect_outliers_iqr(series):
     q1, q3 = series.quantile(0.25), series.quantile(0.75)
     iqr = q3 - q1
@@ -320,14 +328,22 @@ with tab_peta:
         st.warning("Tidak ada data untuk ditampilkan di peta.")
     else:
         map_df = filtered[filtered["Latitude"].notna() & filtered["Longitude"].notna()].copy()
-        # Sanity-check coordinate bounds
         map_df = map_df[
             map_df["Latitude"].between(-90, 90) &
             map_df["Longitude"].between(-180, 180)
         ]
 
-        lat0 = map_df["Latitude"].mean() if not map_df.empty else -2.548926
-        lon0 = map_df["Longitude"].mean() if not map_df.empty else 118.0148634
+        subj_mask   = map_df["Nomor"].astype(str).str.lower().str.contains("obyek", na=False)
+        subj_df     = map_df[subj_mask]
+        comp_map_df = map_df[~subj_mask]
+
+        # Pusatkan peta ke obyek penilaian jika ada, atau rata-rata semua
+        if not subj_df.empty:
+            lat0, lon0 = float(subj_df.iloc[0]["Latitude"]), float(subj_df.iloc[0]["Longitude"])
+        elif not map_df.empty:
+            lat0, lon0 = map_df["Latitude"].mean(), map_df["Longitude"].mean()
+        else:
+            lat0, lon0 = -2.548926, 118.0148634
 
         m = folium.Map(
             location=[lat0, lon0],
@@ -346,38 +362,72 @@ with tab_peta:
             name="Satellite", attr="Tiles © Esri",
         ).add_to(m)
 
-        if show_heatmap and not map_df.empty:
+        if show_heatmap and not comp_map_df.empty:
             heat = [
                 [r.Latitude, r.Longitude, float(r.Harga_Tanah)]
-                for r in map_df.itertuples()
+                for r in comp_map_df.itertuples()
                 if pd.notna(getattr(r, "Harga_Tanah", None))
             ]
             if heat:
                 HeatMap(heat, name="Heatmap Harga", radius=30, blur=20, min_opacity=0.4).add_to(m)
 
+        # ── Garis jarak dari Obyek Penilaian ke setiap Data Pembanding ──────
+        if not subj_df.empty and not comp_map_df.empty:
+            s = subj_df.iloc[0]
+            lines_fg = folium.FeatureGroup(name="📏 Garis Jarak", show=True).add_to(m)
+
+            for r in comp_map_df.itertuples():
+                nomor_r = str(safe_get(r, "Nomor")).strip()
+                dist_km = haversine_km(s.Latitude, s.Longitude, r.Latitude, r.Longitude)
+                dist_label = f"{dist_km:.2f} km" if dist_km >= 1 else f"{dist_km*1000:.0f} m"
+
+                folium.PolyLine(
+                    locations=[[s.Latitude, s.Longitude], [r.Latitude, r.Longitude]],
+                    color="#e74c3c",
+                    weight=2,
+                    dash_array="6 4",
+                    opacity=0.8,
+                    tooltip=f"Obyek → Data {nomor_r}: {dist_label}",
+                ).add_to(lines_fg)
+
+                # Label jarak di tengah garis
+                mid_lat = (s.Latitude + r.Latitude) / 2
+                mid_lon = (s.Longitude + r.Longitude) / 2
+                folium.Marker(
+                    [mid_lat, mid_lon],
+                    icon=folium.DivIcon(
+                        html=f"""
+                        <div style="font-size:10px;font-weight:bold;color:#c0392b;
+                                    background:rgba(255,255,255,0.9);padding:2px 6px;
+                                    border-radius:10px;border:1px solid #e74c3c;
+                                    white-space:nowrap;pointer-events:none;
+                                    box-shadow:1px 1px 3px rgba(0,0,0,0.2)">
+                            📏 {dist_label}
+                        </div>""",
+                        icon_size=(90, 22),
+                        icon_anchor=(45, 11),
+                    ),
+                ).add_to(lines_fg)
+
+        # ── Layer marker data pembanding (bisa di-cluster) ──────────────────
         if use_clustering:
             marker_layer = MarkerCluster(name="Data Pembanding").add_to(m)
         else:
             marker_layer = folium.FeatureGroup(name="Data Pembanding").add_to(m)
 
-        for r in map_df.itertuples():
-            nomor    = str(safe_get(r, "Nomor")).strip()
-            tahun    = getattr(r, "Tahun_Bersih", 0) or 0
-            is_subj  = "obyek" in nomor.lower()
-            warna    = YEAR_COLORS["subject"] if is_subj else get_color_by_year(tahun)
-            icon_sym = "home" if is_subj else "info-sign"
-            foto     = str(safe_get(r, "Foto", "#"))
-            harga_fmt = format_currency(getattr(r, "Harga_Tanah", 0))
-            luas_t   = safe_get(r, "Luas_Tanah")
-            luas_b   = safe_get(r, "Luas_Bangunan")
+        # ── Layer Obyek Penilaian — selalu terpisah, tidak masuk cluster ────
+        subj_layer = folium.FeatureGroup(name="🏠 Obyek Penilaian", show=True).add_to(m)
 
+        def build_popup(r, is_subj, tahun, harga_fmt, luas_t, luas_b, foto):
             foto_html = (
                 f'<a href="{foto}" target="_blank">📷 Lihat Foto</a><br>'
-                if foto not in ("#", "nan", "-", "None") else ""
+                if foto not in ("#", "nan", "-", "None", "") else ""
             )
-            popup_html = f"""
+            color_harga = "purple" if is_subj else "green"
+            label = "🏠 Obyek Penilaian" if is_subj else f"Data {str(safe_get(r,'Nomor')).strip()}"
+            return f"""
             <div style="font-family:sans-serif;min-width:220px;font-size:13px">
-              <b style="font-size:14px">{'🏠 Obyek Penilaian' if is_subj else f'Data {nomor}'}</b>
+              <b style="font-size:14px">{label}</b>
               <hr style="margin:4px 0">
               <b>Alamat:</b> {safe_get(r,'Alamat')}<br>
               <b>Kelurahan:</b> {safe_get(r,'Kelurahan')}<br>
@@ -387,7 +437,7 @@ with tab_peta:
               <b>Luas Tanah:</b> {luas_t} m²<br>
               <b>Luas Bangunan:</b> {luas_b} m²<br>
               <b>Harga:</b>
-              <span style="color:{'purple' if is_subj else 'green'};font-weight:bold;font-size:14px">
+              <span style="color:{color_harga};font-weight:bold;font-size:14px">
                 {harga_fmt}/m²
               </span><br>
               <b>Kontak:</b> {safe_get(r,'Kontak')}<br>
@@ -396,14 +446,28 @@ with tab_peta:
               <a href="{generate_streetview_url(r.Latitude, r.Longitude)}" target="_blank">
                 🔍 Lihat Street View
               </a>
-            </div>
-            """
+            </div>"""
+
+        for r in map_df.itertuples():
+            nomor     = str(safe_get(r, "Nomor")).strip()
+            tahun     = getattr(r, "Tahun_Bersih", 0) or 0
+            is_subj   = "obyek" in nomor.lower()
+            warna     = YEAR_COLORS["subject"] if is_subj else get_color_by_year(tahun)
+            icon_sym  = "home" if is_subj else "info-sign"
+            foto      = str(safe_get(r, "Foto", "#"))
+            harga_fmt = format_currency(getattr(r, "Harga_Tanah", 0))
+            luas_t    = safe_get(r, "Luas_Tanah")
+            luas_b    = safe_get(r, "Luas_Bangunan")
+
+            popup_html = build_popup(r, is_subj, tahun, harga_fmt, luas_t, luas_b, foto)
+            target = subj_layer if is_subj else marker_layer
+
             folium.Marker(
                 location=[r.Latitude, r.Longitude],
                 popup=folium.Popup(popup_html, max_width=320),
                 tooltip=f"{'🏠 Obyek' if is_subj else f'Data {nomor}'} | {harga_fmt}/m²",
                 icon=folium.Icon(color=warna, icon=icon_sym, prefix="glyphicon"),
-            ).add_to(marker_layer)
+            ).add_to(target)
 
             label_color = "#6c3483" if is_subj else ("#922b21" if warna == "red" else "#154360")
             folium.Marker(
@@ -431,12 +495,18 @@ with tab_peta:
           <span style="color:blue">&#9679;</span> 2024<br>
           <span style="color:orange">&#9679;</span> 2023<br>
           <span style="color:red">&#9679;</span> &lt; 2023<br>
-          <span style="color:purple">&#9679;</span> Obyek Penilaian
+          <span style="color:purple">&#9679;</span> Obyek Penilaian<br>
+          <span style="color:#e74c3c">&#9135;&#9135;</span> Garis Jarak
         </div>
         """
         m.get_root().html.add_child(folium.Element(legend))
 
-        st.caption(f"Menampilkan **{len(map_df)}** titik lokasi di peta.")
+        n_comp = len(comp_map_df)
+        n_subj = len(subj_df)
+        st.caption(
+            f"Menampilkan **{n_subj} Obyek Penilaian** + **{n_comp} Data Pembanding** "
+            f"({'dengan' if not subj_df.empty else 'tanpa'} garis jarak)"
+        )
         st_folium(m, width="100%", height=680, returned_objects=[])
 
 # ═══════════════════════════════════════════════════════════════════════════════
