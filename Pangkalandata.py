@@ -162,24 +162,43 @@ if not st.session_state["tampilkan"]:
 # ─── Apply filters ────────────────────────────────────────────────────────────
 filtered = df.copy()
 
+# Identifikasi baris Obyek Penilaian — selalu dipertahankan di semua filter
+_is_obyek = filtered["Nomor"].astype(str).str.strip().str.lower().str.contains("obyek", na=False)
+
 if city_input.strip():
-    filtered = filtered[filtered["Kota"].astype(str).str.strip().str.lower().str.contains(
+    _city_ok = filtered["Kota"].astype(str).str.strip().str.lower().str.contains(
         city_input.strip().lower(), na=False
-    )]
+    )
+    filtered = filtered[_city_ok | _is_obyek]
+    _is_obyek = filtered["Nomor"].astype(str).str.strip().str.lower().str.contains("obyek", na=False)
+
 if selected_year != "Semua Tahun":
-    filtered = filtered[filtered["Tahun_Bersih"] == int(selected_year)]
+    _year_ok = filtered["Tahun_Bersih"] == int(selected_year)
+    filtered = filtered[_year_ok | _is_obyek]
+    _is_obyek = filtered["Nomor"].astype(str).str.strip().str.lower().str.contains("obyek", na=False)
+
 if selected_kecamatan != "Semua Kecamatan":
-    filtered = filtered[filtered["Kecamatan"].astype(str) == selected_kecamatan]
+    _kec_ok = filtered["Kecamatan"].astype(str) == selected_kecamatan
+    filtered = filtered[_kec_ok | _is_obyek]
+    _is_obyek = filtered["Nomor"].astype(str).str.strip().str.lower().str.contains("obyek", na=False)
+
 if price_range:
-    filtered = filtered[
-        (filtered["Harga_Tanah"] >= price_range[0]) &
-        (filtered["Harga_Tanah"] <= price_range[1])
-    ]
+    # Obyek Penilaian sering tidak punya Harga_Tanah — jangan dibuang
+    _price_ok = (
+        filtered["Harga_Tanah"].isna() |
+        ((filtered["Harga_Tanah"] >= price_range[0]) &
+         (filtered["Harga_Tanah"] <= price_range[1]))
+    )
+    filtered = filtered[_price_ok | _is_obyek]
+    _is_obyek = filtered["Nomor"].astype(str).str.strip().str.lower().str.contains("obyek", na=False)
+
 if luas_range:
-    filtered = filtered[
-        (filtered["Luas_Tanah"] >= luas_range[0]) &
-        (filtered["Luas_Tanah"] <= luas_range[1])
-    ]
+    _luas_ok = (
+        filtered["Luas_Tanah"].isna() |
+        ((filtered["Luas_Tanah"] >= luas_range[0]) &
+         (filtered["Luas_Tanah"] <= luas_range[1]))
+    )
+    filtered = filtered[_luas_ok | _is_obyek]
 
 # Outlier flag
 valid_harga = filtered["Harga_Tanah"].dropna()
@@ -452,8 +471,6 @@ with tab_peta:
             nomor     = str(safe_get(r, "Nomor")).strip()
             tahun     = getattr(r, "Tahun_Bersih", 0) or 0
             is_subj   = "obyek" in nomor.lower()
-            warna     = YEAR_COLORS["subject"] if is_subj else get_color_by_year(tahun)
-            icon_sym  = "home" if is_subj else "info-sign"
             foto      = str(safe_get(r, "Foto", "#"))
             harga_fmt = format_currency(getattr(r, "Harga_Tanah", 0))
             luas_t    = safe_get(r, "Luas_Tanah")
@@ -462,29 +479,69 @@ with tab_peta:
             popup_html = build_popup(r, is_subj, tahun, harga_fmt, luas_t, luas_b, foto)
             target = subj_layer if is_subj else marker_layer
 
-            folium.Marker(
-                location=[r.Latitude, r.Longitude],
-                popup=folium.Popup(popup_html, max_width=320),
-                tooltip=f"{'🏠 Obyek' if is_subj else f'Data {nomor}'} | {harga_fmt}/m²",
-                icon=folium.Icon(color=warna, icon=icon_sym, prefix="glyphicon"),
-            ).add_to(target)
+            if is_subj:
+                # Pin merah besar berbentuk drop-pin dengan ikon rumah — mudah dibedakan
+                folium.Marker(
+                    location=[r.Latitude, r.Longitude],
+                    popup=folium.Popup(popup_html, max_width=320),
+                    tooltip="🏠 Obyek Penilaian — klik untuk detail",
+                    icon=folium.DivIcon(
+                        html="""
+                        <div style="position:relative;width:38px;height:50px">
+                          <div style="width:38px;height:38px;background:#c0392b;
+                                      border-radius:50% 50% 50% 0;
+                                      transform:rotate(-45deg);
+                                      border:3px solid white;
+                                      box-shadow:0 3px 8px rgba(0,0,0,0.5)">
+                          </div>
+                          <span style="position:absolute;top:4px;left:6px;
+                                       font-size:18px;line-height:1">🏠</span>
+                        </div>""",
+                        icon_size=(38, 50),
+                        icon_anchor=(19, 50),
+                    ),
+                ).add_to(target)
+                # Label Obyek Penilaian — lebih besar & mencolok
+                folium.Marker(
+                    [r.Latitude, r.Longitude],
+                    icon=folium.DivIcon(
+                        html="""
+                        <div style="font-size:12px;font-weight:bold;color:#c0392b;
+                                    background:rgba(255,255,255,0.95);padding:3px 8px;
+                                    border-radius:5px;white-space:nowrap;
+                                    border:2px solid #c0392b;pointer-events:none;
+                                    box-shadow:1px 2px 5px rgba(0,0,0,0.3);margin-top:2px">
+                            🏠 OBYEK PENILAIAN
+                        </div>""",
+                        icon_size=(175, 28),
+                        icon_anchor=(87, -4),
+                    ),
+                ).add_to(m)
+            else:
+                warna = get_color_by_year(tahun)
+                folium.Marker(
+                    location=[r.Latitude, r.Longitude],
+                    popup=folium.Popup(popup_html, max_width=320),
+                    tooltip=f"Data {nomor} | {harga_fmt}/m²",
+                    icon=folium.Icon(color=warna, icon="info-sign", prefix="glyphicon"),
+                ).add_to(target)
 
-            label_color = "#6c3483" if is_subj else ("#922b21" if warna == "red" else "#154360")
-            folium.Marker(
-                [r.Latitude, r.Longitude],
-                icon=folium.DivIcon(
-                    html=f"""
-                    <div style="font-size:11px;color:{label_color};font-weight:bold;
-                                background:rgba(255,255,255,0.85);padding:2px 5px;
-                                border-radius:4px;white-space:nowrap;
-                                border:1px solid {label_color};pointer-events:none">
-                        {harga_fmt}/m²<br>
-                        <span style="font-size:10px">{'Obyek' if is_subj else f'Data {nomor}'}</span>
-                    </div>""",
-                    icon_size=(140, 36),
-                    icon_anchor=(0, 0),
-                ),
-            ).add_to(m)
+                label_color = "#922b21" if warna == "red" else "#154360"
+                folium.Marker(
+                    [r.Latitude, r.Longitude],
+                    icon=folium.DivIcon(
+                        html=f"""
+                        <div style="font-size:11px;color:{label_color};font-weight:bold;
+                                    background:rgba(255,255,255,0.85);padding:2px 5px;
+                                    border-radius:4px;white-space:nowrap;
+                                    border:1px solid {label_color};pointer-events:none">
+                            {harga_fmt}/m²<br>
+                            <span style="font-size:10px">Data {nomor}</span>
+                        </div>""",
+                        icon_size=(140, 36),
+                        icon_anchor=(0, 0),
+                    ),
+                ).add_to(m)
 
         folium.LayerControl(collapsed=False).add_to(m)
 
@@ -495,7 +552,7 @@ with tab_peta:
           <span style="color:blue">&#9679;</span> 2024<br>
           <span style="color:orange">&#9679;</span> 2023<br>
           <span style="color:red">&#9679;</span> &lt; 2023<br>
-          <span style="color:purple">&#9679;</span> Obyek Penilaian<br>
+          <span style="color:#c0392b;font-size:14px">🏠</span> Obyek Penilaian<br>
           <span style="color:#e74c3c">&#9135;&#9135;</span> Garis Jarak
         </div>
         """
