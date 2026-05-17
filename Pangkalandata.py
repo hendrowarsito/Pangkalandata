@@ -743,33 +743,45 @@ with tab_peta:
                  style="font-size:10px;color:#2980b9">&#8599; {label_txt}</a>
             </div>"""
 
-        def build_popup(r, is_subj, tahun, harga_fmt, luas_t, luas_b, foto):
-            header_bg     = "#fdecea" if is_subj else "#eafaf1"
-            header_border = "#c0392b" if is_subj else "#27ae60"
-            nomor_str     = str(safe_get(r, "Nomor")).strip()
-            label         = "🏠 Obyek Penilaian" if is_subj else f"Data {nomor_str}"
+        # ── CSS constants untuk popup ─────────────────────────────────────
+        SEC  = ("background:#f0faf5;color:#1a7a4a;font-size:10px;font-weight:bold;"
+                "text-transform:uppercase;letter-spacing:0.6px;padding:3px 7px;"
+                "border-radius:3px;margin:8px 0 3px 0;display:block")
+        TD_L = ("color:#777;white-space:nowrap;padding:3px 6px 3px 0;"
+                "vertical-align:top;font-size:11.5px")
+        TD_V = "padding:3px 10px 3px 0;vertical-align:top;font-size:12px"
+        TR_A = "background:#f8fafb"   # alternating row background
 
-            # helper: satu baris 2-kolom di tabel
-            def r2(l1, v1, l2, v2):
+        def build_popup(r, is_subj, tahun, harga_fmt, luas_t, luas_b, foto):
+            nomor_str = str(safe_get(r, "Nomor")).strip()
+
+            # ── row helpers ───────────────────────────────────────────────
+            def r2(l1, v1, l2, v2, stripe=False):
+                bg = f' style="background:#f8fafb"' if stripe else ""
                 return (
-                    f'<tr>'
-                    f'<td style="color:#555;white-space:nowrap;padding:2px 5px 2px 0;vertical-align:top"><b>{l1}</b></td>'
-                    f'<td style="padding:2px 10px 2px 0;vertical-align:top">{v1}</td>'
-                    f'<td style="color:#555;white-space:nowrap;padding:2px 5px 2px 0;vertical-align:top"><b>{l2}</b></td>'
-                    f'<td style="padding:2px 0;vertical-align:top">{v2}</td>'
+                    f'<tr{bg}>'
+                    f'<td style="{TD_L}">{l1}</td>'
+                    f'<td style="{TD_V}">{v1}</td>'
+                    f'<td style="{TD_L}">{l2}</td>'
+                    f'<td style="{TD_V}">{v2}</td>'
                     f'</tr>'
                 )
-            # helper: satu baris span 3 kolom (label + nilai lebar)
-            def r1(label_txt, value):
+            def r1(lbl, val, stripe=False):
+                bg = f' style="background:#f8fafb"' if stripe else ""
                 return (
-                    f'<tr>'
-                    f'<td style="color:#555;white-space:nowrap;padding:2px 5px 2px 0;vertical-align:top"><b>{label_txt}</b></td>'
-                    f'<td colspan="3" style="padding:2px 0;vertical-align:top">{value}</td>'
+                    f'<tr{bg}>'
+                    f'<td style="{TD_L}">{lbl}</td>'
+                    f'<td colspan="3" style="{TD_V}">{val}</td>'
                     f'</tr>'
                 )
+            def sec(icon, title):
+                return f'<tr><td colspan="4"><span style="{SEC}">{icon} {title}</span></td></tr>'
+
+            tbl_open  = '<table style="width:100%;border-collapse:collapse">'
+            tbl_close = '</table>'
 
             if is_subj:
-                # ── Galeri foto multi-sudut ───────────────────────────────────
+                # ── Galeri foto ───────────────────────────────────────────
                 foto_pairs = [
                     (safe_get(r, "Foto",              "#"), "Depan"),
                     (safe_get(r, "Foto_Dalam",         "#"), "Dalam"),
@@ -780,100 +792,138 @@ with tab_peta:
                 thumbs = "".join(_foto_mini(u, lb) for u, lb in foto_pairs
                                  if u not in ("#", "-", "nan", "None", ""))
                 galeri = (
-                    f'<div style="margin:6px 0 8px 0;overflow-x:auto;white-space:nowrap">{thumbs}</div>'
+                    f'<div style="margin:6px 0 10px;overflow-x:auto;white-space:nowrap">{thumbs}</div>'
                     if thumbs else ""
                 )
+                sv_url = generate_streetview_url(r.Latitude, r.Longitude)
                 body = f"""
-                  {galeri}
-                  <table style="width:100%;border-collapse:collapse;font-size:12px;line-height:1.5">
-                    {r2('Pemilik', safe_get(r,'Pemilik'), 'Jenis', safe_get(r,'Jenis_Properti'))}
-                    {r1('Alamat', safe_get(r,'Alamat'))}
-                    {r2('Kelurahan', safe_get(r,'Kelurahan'), 'Kecamatan', safe_get(r,'Kecamatan'))}
-                    {r2('Kota', safe_get(r,'Kota'), 'Propinsi', safe_get(r,'Propinsi'))}
-                    {r1('Luas Tanah', f"{luas_t} m²")}
-                    {r2('Peruntukan', safe_get(r,'Peruntukan'), 'Kepemilikan', safe_get(r,'Kepemilikan'))}
-                    {r2('Penggunaan', safe_get(r,'Penggunaan'), 'Kode Inspeksi', safe_get(r,'Kode_Inspeksi'))}
-                    {r1('Pemberi Tugas', safe_get(r,'Pemberi_Tugas'))}
-                  </table>"""
+                {galeri}
+                {tbl_open}
+                  {sec('📋','Identitas')}
+                  {r2('Pemilik', safe_get(r,'Pemilik'), 'Jenis', safe_get(r,'Jenis_Properti'))}
+                  {r2('Kode Inspeksi', safe_get(r,'Kode_Inspeksi'), 'Reviewer', safe_get(r,'Reviewer'), True)}
+                  {r1('Pemberi Tugas', safe_get(r,'Pemberi_Tugas'))}
+                  {sec('📍','Lokasi')}
+                  {r1('Alamat', safe_get(r,'Alamat'))}
+                  {r2('Kelurahan', safe_get(r,'Kelurahan'), 'Kecamatan', safe_get(r,'Kecamatan'), True)}
+                  {r2('Kota', safe_get(r,'Kota'), 'Propinsi', safe_get(r,'Propinsi'))}
+                  {sec('📐','Fisik')}
+                  {r1('Luas Tanah', f'{luas_t} m²')}
+                  {r2('Peruntukan', safe_get(r,'Peruntukan'), 'Kepemilikan', safe_get(r,'Kepemilikan'), True)}
+                  {r1('Penggunaan', safe_get(r,'Penggunaan'))}
+                {tbl_close}
+                <div style="margin-top:8px;font-size:11px;display:flex;gap:14px">
+                  <a href="{sv_url}" target="_blank"
+                     style="color:#2980b9;text-decoration:none">
+                    &#128269; Street View &#8599;
+                  </a>
+                </div>"""
+
+                return f"""
+                <div style="font-family:'Segoe UI',Arial,sans-serif;
+                            min-width:320px;max-width:380px">
+                  <div style="background:#fdecea;border-left:4px solid #c0392b;
+                              padding:7px 10px;margin-bottom:4px;
+                              border-radius:0 5px 5px 0">
+                    <b style="font-size:14px;color:#c0392b">🏠 Obyek Penilaian</b>
+                  </div>
+                  {body}
+                </div>"""
+
             else:
-                # ── Foto Depan (lebar penuh) + link foto jalan ───────────────
+                # ── Data Pembanding ───────────────────────────────────────
                 foto_jalan_url = str(safe_get(r, "Foto_Jalan", "#"))
                 foto_jalan_ok  = foto_jalan_url not in ("#", "-", "nan", "None", "")
-                lh3, thumb_url = gdrive_thumbnail(foto, width=420)
+                sv_url         = generate_streetview_url(r.Latitude, r.Longitude)
+                lh3, thumb_url = gdrive_thumbnail(foto, width=440)
 
-                if lh3:
-                    jalan_link = (
-                        f' &nbsp;|&nbsp; <a href="{foto_jalan_url}" target="_blank"'
+                # ── foto + semua link dalam SATU baris ────────────────────
+                links = []
+                if lh3 and foto not in ("#", "-", "nan", "None", ""):
+                    links.append(
+                        f'<a href="{foto}" target="_blank"'
+                        f' style="color:#2980b9;text-decoration:none">&#128247; Foto Depan &#8599;</a>'
+                    )
+                if foto_jalan_ok:
+                    links.append(
+                        f'<a href="{foto_jalan_url}" target="_blank"'
                         f' style="color:#2980b9;text-decoration:none">&#128247; Foto Jalan &#8599;</a>'
-                        if foto_jalan_ok else ""
                     )
-                    foto_section = f"""
-                    <div style="margin:0 0 8px 0">
-                      <img src="{lh3}"
-                           style="width:100%;border-radius:6px;border:1px solid #ddd;display:block;margin:0 auto 4px"
-                           referrerpolicy="no-referrer"
-                           onerror="this.src='{thumb_url}';this.onerror=null;">
-                      <div style="font-size:11px;text-align:center">
-                        <a href="{foto}" target="_blank"
-                           style="color:#2980b9;text-decoration:none">
-                          &#128247; Buka foto selengkapnya &#8599;
-                        </a>{jalan_link}
-                      </div>
-                    </div>"""
-                elif foto_jalan_ok:
-                    foto_section = (
-                        f'<div style="margin-bottom:6px;font-size:11px">'
-                        f'<a href="{foto_jalan_url}" target="_blank" style="color:#2980b9">&#128247; Foto Jalan &#8599;</a>'
-                        f'</div>'
-                    )
-                else:
-                    foto_section = ""
+                links.append(
+                    f'<a href="{sv_url}" target="_blank"'
+                    f' style="color:#2980b9;text-decoration:none">&#128269; Street View &#8599;</a>'
+                )
+                link_bar = (
+                    f'<div style="display:flex;gap:12px;margin:5px 0 10px;'
+                    f'font-size:11px;flex-wrap:wrap">'
+                    + " ".join(links) +
+                    f'</div>'
+                )
 
-                # Harga Total
-                ht = getattr(r, "Harga_Total", None)
-                harga_total_val = format_currency(ht) if (ht and not pd.isna(ht)) else "-"
+                foto_img = ""
+                if lh3:
+                    foto_img = f"""
+                    <img src="{lh3}"
+                         style="width:100%;border-radius:7px;display:block;
+                                border:1px solid #e0e0e0;
+                                box-shadow:0 2px 8px rgba(0,0,0,0.12)"
+                         referrerpolicy="no-referrer"
+                         onerror="this.src='{thumb_url}';this.onerror=null;">"""
 
-                # Kondisi & Kelas Bangunan
-                kondisi = safe_get(r, "Kondisi_Bangunan")
-                kelas   = safe_get(r, "Kelas_Bangunan")
+                # Harga
+                ht  = getattr(r, "Harga_Total", None)
+                ht_str = format_currency(ht) if (ht and not pd.isna(ht)) else None
+
+                harga_card = f"""
+                <div style="background:linear-gradient(135deg,#eafaf1,#d5f5e3);
+                            border-radius:7px;padding:8px 12px;margin:6px 0;
+                            border:1px solid #a9dfbf">
+                  {"<div style='font-size:11px;color:#555;margin-bottom:2px'>Harga Total: " + ht_str + "</div>" if ht_str else ""}
+                  <div style="font-size:22px;font-weight:bold;color:#1a7a4a;line-height:1.1">
+                    {harga_fmt}
+                    <span style="font-size:12px;color:#555;font-weight:normal">/m²</span>
+                  </div>
+                </div>"""
+
+                # Badge header
+                jenis_data = safe_get(r, "Jenis_Data")
+                badge_col  = "#e67e22" if "penawaran" in str(jenis_data).lower() else "#2980b9"
+                header = f"""
+                <div style="background:#eafaf1;border-left:4px solid #27ae60;
+                            padding:7px 10px;margin-bottom:6px;border-radius:0 5px 5px 0;
+                            display:flex;align-items:center;gap:8px">
+                  <b style="font-size:15px;color:#1a7a4a">Data {nomor_str}</b>
+                  <span style="background:{badge_col};color:white;border-radius:10px;
+                               padding:1px 8px;font-size:10.5px;font-weight:600">
+                    {jenis_data}
+                  </span>
+                  <span style="color:#888;font-size:11px;margin-left:auto">{int(tahun) if tahun else ''}</span>
+                </div>"""
 
                 body = f"""
-                  {foto_section}
-                  <table style="width:100%;border-collapse:collapse;font-size:12px;line-height:1.5">
-                    {r2('Jenis', safe_get(r,'Jenis_Properti'), 'Jenis Data', safe_get(r,'Jenis_Data'))}
-                    {r1('Alamat', safe_get(r,'Alamat'))}
-                    {r1('Kompleks', safe_get(r,'Kompleks'))}
-                    {r2('Kelurahan', safe_get(r,'Kelurahan'), 'Kecamatan', safe_get(r,'Kecamatan'))}
-                    {r2('Kota', safe_get(r,'Kota'), 'Propinsi', safe_get(r,'Propinsi'))}
-                    {r1('Tahun', int(tahun) if tahun else '-')}
-                    {r2('Luas Tanah', f'{luas_t} m²', 'Luas Bangunan', f'{luas_b} m²')}
-                    {r2('Kondisi Bgn', kondisi, 'Kelas Bgn', kelas)}
-                    {r1('Harga Total', harga_total_val)}
-                    <tr>
-                      <td style="color:#555;white-space:nowrap;padding:2px 5px 2px 0"><b>Harga/m²</b></td>
-                      <td colspan="3" style="padding:2px 0">
-                        <span style="color:#27ae60;font-weight:bold;font-size:15px">{harga_fmt}</span>
-                      </td>
-                    </tr>
-                    {r2('Kontak', safe_get(r,'Kontak'), 'Telp', safe_get(r,'Telp'))}
-                  </table>"""
+                {foto_img}
+                {link_bar}
+                {harga_card}
+                {tbl_open}
+                  {sec('📍','Lokasi & Properti')}
+                  {r2('Jenis', safe_get(r,'Jenis_Properti'), 'Tahun', int(tahun) if tahun else '-')}
+                  {r1('Alamat', safe_get(r,'Alamat'), True)}
+                  {r1('Kompleks', safe_get(r,'Kompleks'))}
+                  {r2('Kelurahan', safe_get(r,'Kelurahan'), 'Kecamatan', safe_get(r,'Kecamatan'), True)}
+                  {r2('Kota', safe_get(r,'Kota'), 'Propinsi', safe_get(r,'Propinsi'))}
+                  {sec('🏗️','Fisik Bangunan')}
+                  {r2('Luas Tanah', f'{luas_t} m²', 'Luas Bangunan', f'{luas_b} m²')}
+                  {r2('Kondisi Bgn', safe_get(r,'Kondisi_Bangunan'), 'Kelas Bgn', safe_get(r,'Kelas_Bangunan'), True)}
+                  {sec('📞','Kontak')}
+                  {r2('Nama', safe_get(r,'Kontak'), 'Telp', safe_get(r,'Telp'))}
+                {tbl_close}"""
 
-            sv_url  = generate_streetview_url(r.Latitude, r.Longitude)
-            max_w   = 360 if is_subj else 480
-            return f"""
-            <div style="font-family:sans-serif;min-width:{max_w - 40}px;
-                        max-width:{max_w}px;font-size:12.5px">
-              <div style="background:{header_bg};border-left:4px solid {header_border};
-                          padding:6px 8px;margin-bottom:6px;border-radius:0 4px 4px 0">
-                <b style="font-size:14px;color:{header_border}">{label}</b>
-              </div>
-              {body}
-              <hr style="margin:6px 0 4px 0">
-              <a href="{sv_url}" target="_blank"
-                 style="font-size:11px;color:#2980b9;text-decoration:none">
-                &#128269; Lihat Street View &#8599;
-              </a>
-            </div>"""
+                return f"""
+                <div style="font-family:'Segoe UI',Arial,sans-serif;
+                            min-width:440px;max-width:500px">
+                  {header}
+                  {body}
+                </div>"""
 
         for r in map_df.itertuples():
             nomor     = str(safe_get(r, "Nomor")).strip()
