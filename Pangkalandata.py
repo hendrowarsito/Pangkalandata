@@ -153,15 +153,224 @@ if not file:
     """)
     st.stop()
 
+# ─── Helpers untuk loading sheet bertranspose ────────────────────────────────
+
+def parse_indo_number(val):
+    """Konversi angka format Indonesia '1.234.567,89' → float 1234567.89"""
+    try:
+        s = str(val).strip().replace(" ", "").replace("%", "")
+        if not s or s in ("nan", "-", ""):
+            return None
+        if "," in s:
+            # Anggap koma = desimal, titik = ribuan
+            s = s.replace(".", "").replace(",", ".")
+        else:
+            # Titik saja: cek apakah itu ribuan (grup 3 angka setelah titik)
+            parts = s.split(".")
+            if len(parts) > 1 and all(len(p) == 3 for p in parts[1:]):
+                s = s.replace(".", "")
+        return float(s)
+    except Exception:
+        return None
+
+def parse_koordinat(val):
+    """Parse '0.640530, 122.907528' → (lat, lon)"""
+    try:
+        s = str(val).strip()
+        parts = s.split(",")
+        return float(parts[0].strip()), float(parts[1].strip())
+    except Exception:
+        return None, None
+
+def _transpose_sheet(file, sheet_name):
+    """Baca sheet bertranspose (baris=field, kolom=record) → DataFrame normal."""
+    df_raw = pd.read_excel(file, sheet_name=sheet_name, index_col=0, header=0)
+    if df_raw.empty:
+        return pd.DataFrame()
+    df = df_raw.T.reset_index(drop=True)
+    df.columns = [str(c).strip() for c in df.columns]
+    return df
+
+RENAME_PEMBANDING = {
+    "Nomor Data":                       "Nomor",
+    "Harga":                            "Harga_Total",
+    "Jenis Data":                       "Jenis_Data",
+    "Tanggal Perolehan Data":           "Tanggal_Data",
+    "Penjual":                          "Kontak",
+    "Sumber Data":                      "Sumber_Data",
+    "Nomor Telepon Pembanding":         "Telp",
+    "Nomor Telepon untuk Konfirmasi":   "Telp_Konfirmasi",
+    "Jenis Properti":                   "Jenis_Properti",
+    "Alamat":                           "Alamat",
+    "Kompleks/Dusun":                   "Kompleks",
+    "Desa/Kelurahan":                   "Kelurahan",
+    "Kecamatan":                        "Kecamatan",
+    "Kabupaten/Kota":                   "Kota",
+    "Propinsi":                         "Propinsi",
+    "Koordinat":                        "_Koordinat",
+    "Luas Tanah":                       "Luas_Tanah",
+    "Luas Bangunan":                    "Luas_Bangunan",
+    "Kondisi Bangunan":                 "Kondisi_Bangunan",
+    "Kelas Bangunan":                   "Kelas_Bangunan",
+    "Peruntukan Tata Kota":             "Peruntukan",
+    "Bentuk kepemilikan":               "Kepemilikan",
+    "Penggunaan Tanah":                 "Penggunaan",
+    "Foto Depan Data":                  "Foto",
+    "Foto Jalan":                       "Foto_Jalan",
+    "Nama Surveyor":                    "Surveyor",
+    "Kode Inspeksi":                    "Kode_Inspeksi",
+    "Catatan":                          "Catatan",
+    "Timestamp":                        "Timestamp",
+}
+
+RENAME_PROPERTI = {
+    "Timestamp":                        "Timestamp",
+    "Kode Inspeksi":                    "Kode_Inspeksi",
+    "Nama Surveyor":                    "Surveyor",
+    "Tanggal Inspeksi":                 "Tanggal_Inspeksi",
+    "Pemberi Tugas":                    "Pemberi_Tugas",
+    "Pemilik Properti":                 "Pemilik",
+    "Jenis Properti":                   "Jenis_Properti",
+    "Alamat":                           "Alamat",
+    "Kompleks/Dusun":                   "Kompleks",
+    "Desa/Kelurahan":                   "Kelurahan",
+    "Kecamatan":                        "Kecamatan",
+    "Kabupaten/Kota":                   "Kota",
+    "Propinsi":                         "Propinsi",
+    "Latitude":                         "Latitude",
+    "Longitude":                        "Longitude",
+    "Koordinat":                        "_Koordinat",
+    "Luas Tanah":                       "Luas_Tanah",
+    "Peruntukan Tata Kota":             "Peruntukan",
+    "Bentuk kepemilikan":               "Kepemilikan",
+    "Penggunaan Tanah":                 "Penggunaan",
+    "Foto Depan Properti":              "Foto",
+    "Foto Bagian Dalam":                "Foto_Dalam",
+    "Foto Jalan dari Samping Kanan":    "Foto_Samping_Kanan",
+    "Foto Jalan dari Samping Kiri":     "Foto_Samping_Kiri",
+    "Gambar Situasi dan Plot ATR BPN":  "Gambar_Situasi",
+    "Reviewer":                         "Reviewer",
+}
+
+def load_pembanding_sheet(file):
+    try:
+        df = _transpose_sheet(file, "Data Pembanding")
+    except Exception:
+        return pd.DataFrame()
+    if df.empty:
+        return pd.DataFrame()
+
+    df = df.rename(columns={k: v for k, v in RENAME_PEMBANDING.items() if k in df.columns})
+
+    # Koordinat → Latitude, Longitude
+    if "_Koordinat" in df.columns:
+        coords = df["_Koordinat"].apply(
+            lambda x: pd.Series(parse_koordinat(x), index=["Latitude", "Longitude"])
+        )
+        df["Latitude"]  = coords["Latitude"]
+        df["Longitude"] = coords["Longitude"]
+
+    # Numerik
+    for col in ["Harga_Total", "Luas_Tanah", "Luas_Bangunan"]:
+        if col in df.columns:
+            df[col] = df[col].apply(parse_indo_number)
+
+    # Harga per m²
+    if "Harga_Total" in df.columns and "Luas_Tanah" in df.columns:
+        df["Harga_Tanah"] = (df["Harga_Total"] / df["Luas_Tanah"]).round(0)
+
+    # Tahun dari Tanggal_Data atau Timestamp
+    for dcol in ["Tanggal_Data", "Timestamp"]:
+        if dcol in df.columns:
+            df["Tahun"] = pd.to_datetime(
+                df[dcol].astype(str), errors="coerce", dayfirst=True
+            ).dt.year
+            break
+
+    # Pastikan Nomor ada
+    if "Nomor" not in df.columns:
+        df["Nomor"] = range(1, len(df) + 1)
+
+    df["_sumber"] = "Data Pembanding"
+    return df
+
+def load_properti_sheet(file):
+    try:
+        df = _transpose_sheet(file, "Data Properti")
+    except Exception:
+        return pd.DataFrame()
+    if df.empty:
+        return pd.DataFrame()
+
+    df = df.rename(columns={k: v for k, v in RENAME_PROPERTI.items() if k in df.columns})
+
+    # Koordinat fallback
+    if ("Latitude" not in df.columns or df["Latitude"].isna().all()) and "_Koordinat" in df.columns:
+        coords = df["_Koordinat"].apply(
+            lambda x: pd.Series(parse_koordinat(x), index=["Latitude", "Longitude"])
+        )
+        df["Latitude"]  = coords["Latitude"]
+        df["Longitude"] = coords["Longitude"]
+
+    for col in ["Latitude", "Longitude", "Luas_Tanah"]:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+
+    # Tahun dari Tanggal_Inspeksi atau Timestamp
+    for dcol in ["Tanggal_Inspeksi", "Timestamp"]:
+        if dcol in df.columns:
+            df["Tahun"] = pd.to_datetime(
+                df[dcol].astype(str), errors="coerce", dayfirst=True
+            ).dt.year
+            break
+
+    df["Nomor"]      = "Obyek Penilaian"
+    df["Harga_Tanah"] = np.nan
+    df["Harga_Total"] = np.nan
+    df["_sumber"]    = "Data Properti"
+    return df
+
 @st.cache_data(show_spinner="Memuat data...")
 def load_data(uploaded_file):
+    xl = pd.ExcelFile(uploaded_file)
+    sheets = xl.sheet_names
+
+    has_pembanding = "Data Pembanding" in sheets
+    has_properti   = "Data Properti"   in sheets
+
+    if has_pembanding or has_properti:
+        frames = []
+        if has_properti:
+            dp = load_properti_sheet(uploaded_file)
+            if not dp.empty:
+                frames.append(dp)
+        if has_pembanding:
+            db = load_pembanding_sheet(uploaded_file)
+            if not db.empty:
+                frames.append(db)
+        if frames:
+            df = pd.concat(frames, ignore_index=True)
+            df["Latitude"]  = pd.to_numeric(df.get("Latitude"),  errors="coerce")
+            df["Longitude"] = pd.to_numeric(df.get("Longitude"), errors="coerce")
+            df["_format"]   = "multi-sheet"
+            return df
+
+    # Fallback: format lama (flat sheet pertama)
     df = pd.read_excel(uploaded_file)
-    df["Latitude"] = pd.to_numeric(df["Latitude"], errors="coerce")
+    df["Latitude"]  = pd.to_numeric(df["Latitude"],  errors="coerce")
     df["Longitude"] = pd.to_numeric(df["Longitude"], errors="coerce")
+    df["_format"]   = "flat"
     return df
 
 df = load_data(file)
-df["Tahun_Bersih"] = df["Tahun"].apply(bersihkan_tahun)
+df["Tahun_Bersih"] = df["Tahun"].apply(bersihkan_tahun) if "Tahun" in df.columns else pd.Series(dtype=float)
+
+# Tunjukkan format yang terdeteksi
+_fmt = df["_format"].iloc[0] if "_fmt" not in st.session_state and not df.empty and "_format" in df.columns else ""
+if _fmt == "multi-sheet":
+    n_prop = int((df["_sumber"] == "Data Properti").sum())   if "_sumber" in df.columns else 0
+    n_pemb = int((df["_sumber"] == "Data Pembanding").sum()) if "_sumber" in df.columns else 0
+    st.sidebar.success(f"✅ Format multi-sheet: {n_prop} Obyek Penilaian + {n_pemb} Data Pembanding")
 
 # ─── Filter controls ──────────────────────────────────────────────────────────
 city_input = st.sidebar.text_input("🔍 Cari Kota/Kabupaten (sebagian nama OK):")
@@ -478,34 +687,105 @@ with tab_peta:
         # ── Layer Obyek Penilaian — selalu terpisah, tidak masuk cluster ────
         subj_layer = folium.FeatureGroup(name="🏠 Obyek Penilaian", show=True).add_to(m)
 
-        def build_popup(r, is_subj, tahun, harga_fmt, luas_t, luas_b, foto):
-            foto_html    = build_foto_html(foto)
-            color_harga  = "#c0392b" if is_subj else "#27ae60"
-            label        = "🏠 Obyek Penilaian" if is_subj else f"Data {str(safe_get(r,'Nomor')).strip()}"
-            header_bg    = "#fdecea" if is_subj else "#eafaf1"
-            header_border= "#c0392b" if is_subj else "#27ae60"
+        def _foto_mini(url, label_txt):
+            """Thumbnail kecil dengan label dan link buka tab baru."""
+            thumb = gdrive_thumbnail(url, width=130)
+            if not thumb:
+                return ""
             return f"""
-            <div style="font-family:sans-serif;min-width:260px;max-width:300px;font-size:13px">
+            <div style="display:inline-block;text-align:center;margin:3px 3px 0 0;vertical-align:top">
+              <img src="{thumb}"
+                   style="width:130px;height:90px;object-fit:cover;border-radius:4px;
+                          border:1px solid #ddd"
+                   onerror="this.style.display='none'">
+              <br>
+              <a href="{url}" target="_blank"
+                 style="font-size:10px;color:#2980b9">&#8599; {label_txt}</a>
+            </div>"""
+
+        def build_popup(r, is_subj, tahun, harga_fmt, luas_t, luas_b, foto):
+            header_bg     = "#fdecea" if is_subj else "#eafaf1"
+            header_border = "#c0392b" if is_subj else "#27ae60"
+            nomor_str     = str(safe_get(r, "Nomor")).strip()
+            label         = "🏠 Obyek Penilaian" if is_subj else f"Data {nomor_str}"
+
+            if is_subj:
+                # ── Galeri foto multi-sudut untuk Obyek Penilaian ────────────
+                galeri = ""
+                foto_pairs = [
+                    (safe_get(r, "Foto",              "#"), "Depan"),
+                    (safe_get(r, "Foto_Dalam",         "#"), "Dalam"),
+                    (safe_get(r, "Foto_Samping_Kanan", "#"), "Kanan"),
+                    (safe_get(r, "Foto_Samping_Kiri",  "#"), "Kiri"),
+                    (safe_get(r, "Gambar_Situasi",     "#"), "Situasi"),
+                ]
+                thumbs = "".join(_foto_mini(u, lb) for u, lb in foto_pairs
+                                 if u not in ("#", "-", "nan", "None", ""))
+                if thumbs:
+                    galeri = f"""
+                    <div style="margin:6px 0 8px 0;overflow-x:auto;white-space:nowrap">
+                      {thumbs}
+                    </div>"""
+
+                body = f"""
+                  {galeri}
+                  <b>Pemilik:</b> {safe_get(r,'Pemilik')}<br>
+                  <b>Jenis:</b> {safe_get(r,'Jenis_Properti')}<br>
+                  <b>Alamat:</b> {safe_get(r,'Alamat')}<br>
+                  <b>Kelurahan:</b> {safe_get(r,'Kelurahan')}<br>
+                  <b>Kecamatan:</b> {safe_get(r,'Kecamatan')}<br>
+                  <b>Kota:</b> {safe_get(r,'Kota')}<br>
+                  <b>Luas Tanah:</b> {luas_t} m²<br>
+                  <b>Peruntukan:</b> {safe_get(r,'Peruntukan')}<br>
+                  <b>Kepemilikan:</b> {safe_get(r,'Kepemilikan')}<br>
+                  <b>Penggunaan:</b> {safe_get(r,'Penggunaan')}<br>
+                  <b>Kode Inspeksi:</b> {safe_get(r,'Kode_Inspeksi')}<br>
+                  <b>Pemberi Tugas:</b> {safe_get(r,'Pemberi_Tugas')}<br>"""
+            else:
+                # ── Foto Depan + link Foto Jalan untuk Data Pembanding ───────
+                foto_depan = build_foto_html(foto)
+                foto_jalan_url = str(safe_get(r, "Foto_Jalan", "#"))
+                foto_jalan_html = ""
+                if foto_jalan_url not in ("#", "-", "nan", "None", ""):
+                    foto_jalan_html = (
+                        f'<a href="{foto_jalan_url}" target="_blank" '
+                        f'style="font-size:11px;color:#2980b9">&#128247; Foto Jalan &#8599;</a><br>'
+                    )
+                harga_total_str = ""
+                ht = getattr(r, "Harga_Total", None)
+                if ht and not pd.isna(ht):
+                    harga_total_str = f"<b>Harga Total:</b> {format_currency(ht)}<br>"
+
+                body = f"""
+                  {foto_depan}
+                  {foto_jalan_html}
+                  <b>Jenis:</b> {safe_get(r,'Jenis_Properti')}<br>
+                  <b>Jenis Data:</b> {safe_get(r,'Jenis_Data')}<br>
+                  <b>Alamat:</b> {safe_get(r,'Alamat')}<br>
+                  <b>Kelurahan:</b> {safe_get(r,'Kelurahan')}<br>
+                  <b>Kecamatan:</b> {safe_get(r,'Kecamatan')}<br>
+                  <b>Kota:</b> {safe_get(r,'Kota')}<br>
+                  <b>Tahun:</b> {int(tahun) if tahun else '-'}<br>
+                  <b>Luas Tanah:</b> {luas_t} m²<br>
+                  <b>Luas Bangunan:</b> {luas_b} m²<br>
+                  {harga_total_str}
+                  <b>Harga/m²:</b>
+                  <span style="color:#27ae60;font-weight:bold;font-size:14px">
+                    {harga_fmt}
+                  </span><br>
+                  <b>Kontak:</b> {safe_get(r,'Kontak')}<br>
+                  <b>Telp:</b> {safe_get(r,'Telp')}<br>"""
+
+            sv_url = generate_streetview_url(r.Latitude, r.Longitude)
+            return f"""
+            <div style="font-family:sans-serif;min-width:280px;max-width:340px;font-size:12.5px">
               <div style="background:{header_bg};border-left:4px solid {header_border};
                           padding:6px 8px;margin-bottom:6px;border-radius:0 4px 4px 0">
                 <b style="font-size:14px;color:{header_border}">{label}</b>
               </div>
-              {foto_html}
-              <b>Alamat:</b> {safe_get(r,'Alamat')}<br>
-              <b>Kelurahan:</b> {safe_get(r,'Kelurahan')}<br>
-              <b>Kecamatan:</b> {safe_get(r,'Kecamatan')}<br>
-              <b>Kota:</b> {safe_get(r,'Kota')}<br>
-              <b>Tahun:</b> {int(tahun) if tahun else '-'}<br>
-              <b>Luas Tanah:</b> {luas_t} m²<br>
-              <b>Luas Bangunan:</b> {luas_b} m²<br>
-              <b>Harga:</b>
-              <span style="color:{color_harga};font-weight:bold;font-size:14px">
-                {harga_fmt}/m²
-              </span><br>
-              <b>Kontak:</b> {safe_get(r,'Kontak')}<br>
-              <b>Telp:</b> {safe_get(r,'Telp')}<br>
+              {body}
               <hr style="margin:5px 0">
-              <a href="{generate_streetview_url(r.Latitude, r.Longitude)}" target="_blank"
+              <a href="{sv_url}" target="_blank"
                  style="font-size:11px;color:#2980b9;text-decoration:none">
                 &#128269; Lihat Street View &#8599;
               </a>
