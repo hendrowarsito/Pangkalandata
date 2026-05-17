@@ -37,45 +37,65 @@ YEAR_COLORS = {
 def generate_streetview_url(lat, lon):
     return f"https://www.google.com/maps/@?api=1&map_action=pano&viewpoint={lat},{lon}&heading=0&pitch=0&fov=75"
 
-def gdrive_thumbnail(url, width=300):
-    """Konversi berbagai format URL Google Drive ke thumbnail URL langsung."""
+def gdrive_file_id(url):
+    """Ekstrak file ID dari berbagai format URL Google Drive."""
     if not url or str(url).strip() in ("", "#", "nan", "None", "-"):
         return None
     url = str(url).strip()
     patterns = [
         r"drive\.google\.com/file/d/([a-zA-Z0-9_-]+)",
         r"drive\.google\.com/open\?id=([a-zA-Z0-9_-]+)",
-        r"drive\.google\.com/uc\?(?:export=\w+&)?id=([a-zA-Z0-9_-]+)",
+        r"drive\.google\.com/uc\?(?:[^&]*&)*id=([a-zA-Z0-9_-]+)",
         r"[?&]id=([a-zA-Z0-9_-]+)",
     ]
     for pat in patterns:
         m = re.search(pat, url)
         if m:
-            fid = m.group(1)
-            return f"https://drive.google.com/thumbnail?id={fid}&sz=w{width}"
+            return m.group(1)
     return None
 
+def gdrive_thumbnail(url, width=300):
+    """
+    Coba beberapa format URL thumbnail Google Drive.
+    Kembalikan daftar URL (diurutkan dari paling reliable).
+    """
+    fid = gdrive_file_id(url)
+    if not fid:
+        return None, None
+    # lh3 = CDN langsung, tidak perlu redirect auth (lebih andal di iframe)
+    lh3  = f"https://lh3.googleusercontent.com/d/{fid}=w{width}"
+    # thumbnail = API resmi Google Drive (backup)
+    thumb = f"https://drive.google.com/thumbnail?id={fid}&sz=w{width}"
+    return lh3, thumb
+
 def build_foto_html(foto_url):
-    """Hasilkan blok HTML foto: thumbnail inline + tombol buka tab baru."""
-    thumb = gdrive_thumbnail(foto_url, width=280)
-    has_link = foto_url and foto_url not in ("", "#", "nan", "None", "-")
-    if thumb:
+    """Thumbnail inline + tombol buka tab baru."""
+    has_link = bool(foto_url) and str(foto_url).strip() not in ("", "#", "nan", "None", "-")
+    if not has_link:
+        return ""
+
+    foto_url = str(foto_url).strip()
+    lh3, thumb = gdrive_thumbnail(foto_url, width=280)
+
+    if lh3:
+        # Coba lh3 dulu; jika gagal, otomatis fallback ke thumbnail API via onerror
         return f"""
-        <div style="margin:6px 0">
-          <img src="{thumb}"
+        <div style="margin:6px 0;text-align:center">
+          <img src="{lh3}"
                style="width:100%;max-width:280px;border-radius:6px;
-                      border:1px solid #ddd;display:block;margin:0 auto 4px auto"
-               onerror="this.outerHTML='<p style=\\'font-size:11px;color:#999\\'>&#128247; Foto tidak dapat dimuat &mdash; pastikan file Google Drive sudah dibagikan publik.</p>'"
+                      border:1px solid #ddd;display:block;margin:0 auto 4px"
+               referrerpolicy="no-referrer"
+               onerror="this.src='{thumb}';this.onerror=null;"
           >
           <a href="{foto_url}" target="_blank"
              style="font-size:11px;color:#2980b9;text-decoration:none">
             &#128247; Buka foto selengkapnya &#8599;
           </a>
         </div>"""
-    elif has_link:
-        return (f'<a href="{foto_url}" target="_blank" '
-                f'style="font-size:12px">&#128247; Lihat Foto</a><br>')
-    return ""
+
+    # Bukan URL Google Drive — tampilkan sebagai link biasa
+    return (f'<a href="{foto_url}" target="_blank" '
+            f'style="font-size:12px">&#128247; Lihat Foto</a><br>')
 
 def format_currency(value):
     try:
@@ -708,15 +728,16 @@ with tab_peta:
 
         def _foto_mini(url, label_txt):
             """Thumbnail kecil dengan label dan link buka tab baru."""
-            thumb = gdrive_thumbnail(url, width=130)
-            if not thumb:
+            lh3, thumb = gdrive_thumbnail(url, width=130)
+            if not lh3:
                 return ""
             return f"""
             <div style="display:inline-block;text-align:center;margin:3px 3px 0 0;vertical-align:top">
-              <img src="{thumb}"
+              <img src="{lh3}"
                    style="width:130px;height:90px;object-fit:cover;border-radius:4px;
                           border:1px solid #ddd"
-                   onerror="this.style.display='none'">
+                   referrerpolicy="no-referrer"
+                   onerror="this.src='{thumb}';this.onerror=null;">
               <br>
               <a href="{url}" target="_blank"
                  style="font-size:10px;color:#2980b9">&#8599; {label_txt}</a>
