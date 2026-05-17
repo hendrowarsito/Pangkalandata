@@ -184,10 +184,27 @@ def parse_koordinat(val):
 
 def _transpose_sheet(file, sheet_name):
     """Baca sheet bertranspose (baris=field, kolom=record) → DataFrame normal."""
-    df_raw = pd.read_excel(file, sheet_name=sheet_name, index_col=0, header=0)
+    df_raw = pd.read_excel(file, sheet_name=sheet_name, header=0)
     if df_raw.empty:
         return pd.DataFrame()
-    df = df_raw.T.reset_index(drop=True)
+
+    # Kolom pertama = nama field; jadikan index setelah dibersihkan duplikatnya
+    field_col = df_raw.iloc[:, 0].astype(str).str.strip()
+
+    # Deduplikasi nama field (e.g., "Foto" ke-2 → "Foto_2")
+    seen = {}
+    unique_fields = []
+    for name in field_col:
+        if name in seen:
+            seen[name] += 1
+            unique_fields.append(f"{name}_{seen[name]}")
+        else:
+            seen[name] = 0
+            unique_fields.append(name)
+
+    df_raw = df_raw.iloc[:, 1:]          # Buang kolom field-name
+    df_raw.index = unique_fields         # Pasang sebagai index unik
+    df = df_raw.T.reset_index(drop=True) # Transpose: record = baris
     df.columns = [str(c).strip() for c in df.columns]
     return df
 
@@ -350,8 +367,10 @@ def load_data(uploaded_file):
                 frames.append(db)
         if frames:
             df = pd.concat(frames, ignore_index=True)
-            df["Latitude"]  = pd.to_numeric(df.get("Latitude"),  errors="coerce")
-            df["Longitude"] = pd.to_numeric(df.get("Longitude"), errors="coerce")
+            if "Latitude"  in df.columns:
+                df["Latitude"]  = pd.to_numeric(df["Latitude"],  errors="coerce")
+            if "Longitude" in df.columns:
+                df["Longitude"] = pd.to_numeric(df["Longitude"], errors="coerce")
             df["_format"]   = "multi-sheet"
             return df
 
