@@ -6,6 +6,7 @@ from streamlit_folium import st_folium
 import plotly.express as px
 import plotly.graph_objects as go
 from io import BytesIO
+import re
 import numpy as np
 
 st.set_page_config(
@@ -35,6 +36,46 @@ YEAR_COLORS = {
 
 def generate_streetview_url(lat, lon):
     return f"https://www.google.com/maps/@?api=1&map_action=pano&viewpoint={lat},{lon}&heading=0&pitch=0&fov=75"
+
+def gdrive_thumbnail(url, width=300):
+    """Konversi berbagai format URL Google Drive ke thumbnail URL langsung."""
+    if not url or str(url).strip() in ("", "#", "nan", "None", "-"):
+        return None
+    url = str(url).strip()
+    patterns = [
+        r"drive\.google\.com/file/d/([a-zA-Z0-9_-]+)",
+        r"drive\.google\.com/open\?id=([a-zA-Z0-9_-]+)",
+        r"drive\.google\.com/uc\?(?:export=\w+&)?id=([a-zA-Z0-9_-]+)",
+        r"[?&]id=([a-zA-Z0-9_-]+)",
+    ]
+    for pat in patterns:
+        m = re.search(pat, url)
+        if m:
+            fid = m.group(1)
+            return f"https://drive.google.com/thumbnail?id={fid}&sz=w{width}"
+    return None
+
+def build_foto_html(foto_url):
+    """Hasilkan blok HTML foto: thumbnail inline + tombol buka tab baru."""
+    thumb = gdrive_thumbnail(foto_url, width=280)
+    has_link = foto_url and foto_url not in ("", "#", "nan", "None", "-")
+    if thumb:
+        return f"""
+        <div style="margin:6px 0">
+          <img src="{thumb}"
+               style="width:100%;max-width:280px;border-radius:6px;
+                      border:1px solid #ddd;display:block;margin:0 auto 4px auto"
+               onerror="this.outerHTML='<p style=\\'font-size:11px;color:#999\\'>&#128247; Foto tidak dapat dimuat &mdash; pastikan file Google Drive sudah dibagikan publik.</p>'"
+          >
+          <a href="{foto_url}" target="_blank"
+             style="font-size:11px;color:#2980b9;text-decoration:none">
+            &#128247; Buka foto selengkapnya &#8599;
+          </a>
+        </div>"""
+    elif has_link:
+        return (f'<a href="{foto_url}" target="_blank" '
+                f'style="font-size:12px">&#128247; Lihat Foto</a><br>')
+    return ""
 
 def format_currency(value):
     try:
@@ -438,16 +479,18 @@ with tab_peta:
         subj_layer = folium.FeatureGroup(name="🏠 Obyek Penilaian", show=True).add_to(m)
 
         def build_popup(r, is_subj, tahun, harga_fmt, luas_t, luas_b, foto):
-            foto_html = (
-                f'<a href="{foto}" target="_blank">📷 Lihat Foto</a><br>'
-                if foto not in ("#", "nan", "-", "None", "") else ""
-            )
-            color_harga = "purple" if is_subj else "green"
-            label = "🏠 Obyek Penilaian" if is_subj else f"Data {str(safe_get(r,'Nomor')).strip()}"
+            foto_html    = build_foto_html(foto)
+            color_harga  = "#c0392b" if is_subj else "#27ae60"
+            label        = "🏠 Obyek Penilaian" if is_subj else f"Data {str(safe_get(r,'Nomor')).strip()}"
+            header_bg    = "#fdecea" if is_subj else "#eafaf1"
+            header_border= "#c0392b" if is_subj else "#27ae60"
             return f"""
-            <div style="font-family:sans-serif;min-width:220px;font-size:13px">
-              <b style="font-size:14px">{label}</b>
-              <hr style="margin:4px 0">
+            <div style="font-family:sans-serif;min-width:260px;max-width:300px;font-size:13px">
+              <div style="background:{header_bg};border-left:4px solid {header_border};
+                          padding:6px 8px;margin-bottom:6px;border-radius:0 4px 4px 0">
+                <b style="font-size:14px;color:{header_border}">{label}</b>
+              </div>
+              {foto_html}
               <b>Alamat:</b> {safe_get(r,'Alamat')}<br>
               <b>Kelurahan:</b> {safe_get(r,'Kelurahan')}<br>
               <b>Kecamatan:</b> {safe_get(r,'Kecamatan')}<br>
@@ -461,9 +504,10 @@ with tab_peta:
               </span><br>
               <b>Kontak:</b> {safe_get(r,'Kontak')}<br>
               <b>Telp:</b> {safe_get(r,'Telp')}<br>
-              <br>{foto_html}
-              <a href="{generate_streetview_url(r.Latitude, r.Longitude)}" target="_blank">
-                🔍 Lihat Street View
+              <hr style="margin:5px 0">
+              <a href="{generate_streetview_url(r.Latitude, r.Longitude)}" target="_blank"
+                 style="font-size:11px;color:#2980b9;text-decoration:none">
+                &#128269; Lihat Street View &#8599;
               </a>
             </div>"""
 
