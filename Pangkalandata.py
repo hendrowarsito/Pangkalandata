@@ -1034,7 +1034,7 @@ with tab_peta:
             f"Menampilkan **{n_subj} Obyek Penilaian** + **{n_comp} Data Pembanding** "
             f"({'dengan' if not subj_df.empty else 'tanpa'} garis jarak)"
         )
-        st_folium(m, width="100%", height=680, returned_objects=[])
+        st_folium(m, width="100%", height=1000, returned_objects=[])
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # TAB 3 — TABEL DATA
