@@ -278,6 +278,7 @@ RENAME_PROPERTI = {
     "Longitude":                        "Longitude",
     "Koordinat":                        "_Koordinat",
     "Luas Tanah":                       "Luas_Tanah",
+    "Luas Bangunan":                    "Luas_Bangunan",
     "Peruntukan Tata Kota":             "Peruntukan",
     "Bentuk kepemilikan":               "Kepemilikan",
     "Penggunaan Tanah":                 "Penggunaan",
@@ -349,9 +350,12 @@ def load_properti_sheet(file):
         df["Latitude"]  = coords["Latitude"]
         df["Longitude"] = coords["Longitude"]
 
-    for col in ["Latitude", "Longitude", "Luas_Tanah"]:
+    for col in ["Latitude", "Longitude"]:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce")
+    for col in ["Luas_Tanah", "Luas_Bangunan"]:
+        if col in df.columns:
+            df[col] = df[col].apply(parse_indo_number)
 
     # Tahun dari Tanggal_Inspeksi atau Timestamp
     for dcol in ["Tanggal_Inspeksi", "Timestamp"]:
@@ -808,7 +812,7 @@ with tab_peta:
                   {r2('Kelurahan', safe_get(r,'Kelurahan'), 'Kecamatan', safe_get(r,'Kecamatan'), True)}
                   {r2('Kota', safe_get(r,'Kota'), 'Propinsi', safe_get(r,'Propinsi'))}
                   {sec('📐','Fisik')}
-                  {r1('Luas Tanah', f'{luas_t} m²')}
+                  {r2('Luas Tanah', f'{luas_t} m²', 'Luas Bangunan', f'{luas_b} m²')}
                   {r2('Peruntukan', safe_get(r,'Peruntukan'), 'Kepemilikan', safe_get(r,'Kepemilikan'), True)}
                   {r1('Penggunaan', safe_get(r,'Penggunaan'))}
                 {tbl_close}
@@ -931,8 +935,16 @@ with tab_peta:
             is_subj   = "obyek" in nomor.lower()
             foto      = str(safe_get(r, "Foto", "#"))
             harga_fmt = format_currency(getattr(r, "Harga_Tanah", 0))
-            luas_t    = safe_get(r, "Luas_Tanah")
-            luas_b    = safe_get(r, "Luas_Bangunan")
+            def _fmt_luas(col):
+                v = getattr(r, col, None)
+                if v is None or (isinstance(v, float) and pd.isna(v)):
+                    return "-"
+                try:
+                    return f"{float(v):,.0f}".replace(",", ".")
+                except Exception:
+                    return str(v)
+            luas_t = _fmt_luas("Luas_Tanah")
+            luas_b = _fmt_luas("Luas_Bangunan")
 
             popup_html = build_popup(r, is_subj, tahun, harga_fmt, luas_t, luas_b, foto)
             target = subj_layer if is_subj else marker_layer
