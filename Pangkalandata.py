@@ -974,12 +974,12 @@ with tab_peta:
                     [r.Latitude, r.Longitude],
                     icon=folium.DivIcon(
                         html="""
-                        <div style="font-size:12px;font-weight:bold;color:#c0392b;
-                                    background:rgba(255,255,255,0.95);padding:3px 8px;
-                                    border-radius:5px;white-space:nowrap;
-                                    border:2px solid #c0392b;pointer-events:none;
-                                    box-shadow:1px 2px 5px rgba(0,0,0,0.3);margin-top:2px">
-                            🏠 OBYEK PENILAIAN
+                        <div style="font-size:11px;font-weight:bold;color:#c0392b;
+                                    background:rgba(255,255,255,0.45);padding:2px 6px;
+                                    border-radius:4px;white-space:nowrap;
+                                    border:1px solid rgba(192,57,43,0.5);pointer-events:none;
+                                    backdrop-filter:blur(2px);margin-top:2px">
+                            🏠 Obyek
                         </div>""",
                         icon_size=(175, 28),
                         icon_anchor=(87, -4),
@@ -998,14 +998,15 @@ with tab_peta:
                     [r.Latitude, r.Longitude],
                     icon=folium.DivIcon(
                         html=f"""
-                        <div style="font-size:11px;color:{label_color};font-weight:bold;
-                                    background:rgba(255,255,255,0.85);padding:2px 5px;
-                                    border-radius:4px;white-space:nowrap;
-                                    border:1px solid {label_color};pointer-events:none">
+                        <div style="font-size:10px;color:{label_color};font-weight:600;
+                                    background:rgba(255,255,255,0.42);padding:1px 4px;
+                                    border-radius:3px;white-space:nowrap;
+                                    border:1px solid rgba(100,100,100,0.25);pointer-events:none;
+                                    backdrop-filter:blur(2px);line-height:1.3">
                             {harga_fmt}/m²<br>
-                            <span style="font-size:10px">Data {nomor}</span>
+                            <span style="font-size:9px;opacity:0.85">#{nomor}</span>
                         </div>""",
-                        icon_size=(140, 36),
+                        icon_size=(130, 32),
                         icon_anchor=(0, 0),
                     ),
                 ).add_to(m)
@@ -1026,7 +1027,7 @@ with tab_peta:
         m.get_root().html.add_child(folium.Element(legend))
 
         # ── Split layout: peta kiri | panel detail kanan ────────────────
-        col_map, col_detail = st.columns([3, 2], gap="medium")
+        col_map, col_detail = st.columns([7, 3], gap="medium")
 
         with col_map:
             n_subj = map_df["Nomor"].astype(str).str.lower().str.contains("obyek").sum()
@@ -1103,7 +1104,7 @@ with tab_peta:
                 if lh3_url:
                     st.markdown(
                         f'<img src="{lh3_url}" '
-                        f'style="width:100%;max-height:180px;object-fit:cover;'
+                        f'style="width:100%;height:auto;'
                         f'border-radius:6px;border:1px solid #e0e0e0;'
                         f'box-shadow:0 1px 4px rgba(0,0,0,0.1);margin-bottom:3px" '
                         f'referrerpolicy="no-referrer" '
