@@ -364,66 +364,59 @@ with tab_peta:
             nomor    = str(safe_get(r, "Nomor")).strip()
             tahun    = getattr(r, "Tahun_Bersih", 0) or 0
             is_subj  = "obyek" in nomor.lower()
-            warna    = YEAR_COLORS["subject"] if is_subj else get_color_by_year(tahun)
-            icon_sym = "home" if is_subj else "info-sign"
-            foto     = str(safe_get(r, "Foto", "#"))
             harga_fmt = format_currency(getattr(r, "Harga_Tanah", 0))
-            luas_t   = safe_get(r, "Luas_Tanah")
-            luas_b   = safe_get(r, "Luas_Bangunan")
 
-            foto_html = (
-                f'<a href="{foto}" target="_blank">📷 Lihat Foto</a><br>'
-                if foto not in ("#", "nan", "-", "None") else ""
-            )
-            popup_html = f"""
-            <div style="font-family:sans-serif;min-width:220px;font-size:13px">
-              <b style="font-size:14px">{'🏠 Obyek Penilaian' if is_subj else f'Data {nomor}'}</b>
-              <hr style="margin:4px 0">
-              <b>Alamat:</b> {safe_get(r,'Alamat')}<br>
-              <b>Kelurahan:</b> {safe_get(r,'Kelurahan')}<br>
-              <b>Kecamatan:</b> {safe_get(r,'Kecamatan')}<br>
-              <b>Kota:</b> {safe_get(r,'Kota')}<br>
-              <b>Tahun:</b> {int(tahun) if tahun else '-'}<br>
-              <b>Luas Tanah:</b> {luas_t} m²<br>
-              <b>Luas Bangunan:</b> {luas_b} m²<br>
-              <b>Harga:</b>
-              <span style="color:{'purple' if is_subj else 'green'};font-weight:bold;font-size:14px">
-                {harga_fmt}/m²
-              </span><br>
-              <b>Kontak:</b> {safe_get(r,'Kontak')}<br>
-              <b>Telp:</b> {safe_get(r,'Telp')}<br>
-              <br>{foto_html}
-              <a href="{generate_streetview_url(r.Latitude, r.Longitude)}" target="_blank">
-                🔍 Lihat Street View
-              </a>
-            </div>
-            """
-            folium.Marker(
-                location=[r.Latitude, r.Longitude],
-                popup=folium.Popup(popup_html, max_width=320),
-                tooltip=f"{'🏠 Obyek' if is_subj else f'Data {nomor}'} | {harga_fmt}/m²",
-                icon=folium.Icon(color=warna, icon=icon_sym, prefix="glyphicon"),
-            ).add_to(marker_layer)
-
-            label_color = "#6c3483" if is_subj else ("#922b21" if warna == "red" else "#154360")
-            folium.Marker(
-                [r.Latitude, r.Longitude],
-                icon=folium.DivIcon(
-                    html=f"""
-                    <div style="font-size:11px;color:{label_color};font-weight:bold;
-                                background:rgba(255,255,255,0.85);padding:2px 5px;
-                                border-radius:4px;white-space:nowrap;
-                                border:1px solid {label_color};pointer-events:none">
-                        {harga_fmt}/m²<br>
-                        <span style="font-size:10px">{'Obyek' if is_subj else f'Data {nomor}'}</span>
-                    </div>""",
-                    icon_size=(140, 36),
-                    icon_anchor=(0, 0),
-                ),
-            ).add_to(m)
+            if is_subj:
+                folium.Marker(
+                    location=[r.Latitude, r.Longitude],
+                    tooltip="🏠 Obyek Penilaian — klik untuk detail",
+                    icon=folium.DivIcon(
+                        html="""
+                        <div style="position:relative;width:38px;height:50px">
+                          <div style="width:38px;height:38px;background:#c0392b;
+                                      border-radius:50% 50% 50% 0;transform:rotate(-45deg);
+                                      border:3px solid white;box-shadow:0 3px 8px rgba(0,0,0,0.5)">
+                          </div>
+                          <span style="position:absolute;top:4px;left:6px;
+                                       font-size:18px;line-height:1">🏠</span>
+                        </div>""",
+                        icon_size=(38, 50), icon_anchor=(19, 50),
+                    ),
+                ).add_to(m)
+                folium.Marker(
+                    [r.Latitude, r.Longitude],
+                    icon=folium.DivIcon(
+                        html="""<div style="font-size:12px;font-weight:bold;color:#c0392b;
+                                    background:rgba(255,255,255,0.95);padding:3px 8px;
+                                    border-radius:5px;white-space:nowrap;border:2px solid #c0392b;
+                                    box-shadow:1px 2px 5px rgba(0,0,0,0.3);pointer-events:none;
+                                    margin-top:2px">🏠 OBYEK PENILAIAN</div>""",
+                        icon_size=(175, 28), icon_anchor=(87, -4),
+                    ),
+                ).add_to(m)
+            else:
+                warna = get_color_by_year(tahun)
+                folium.Marker(
+                    location=[r.Latitude, r.Longitude],
+                    tooltip=f"Data {nomor} | {harga_fmt}/m²",
+                    icon=folium.Icon(color=warna, icon="info-sign", prefix="glyphicon"),
+                ).add_to(marker_layer)
+                label_color = "#922b21" if warna == "red" else "#154360"
+                folium.Marker(
+                    [r.Latitude, r.Longitude],
+                    icon=folium.DivIcon(
+                        html=f"""<div style="font-size:11px;color:{label_color};font-weight:bold;
+                                    background:rgba(255,255,255,0.85);padding:2px 5px;
+                                    border-radius:4px;white-space:nowrap;
+                                    border:1px solid {label_color};pointer-events:none">
+                            {harga_fmt}/m²<br>
+                            <span style="font-size:10px">Data {nomor}</span>
+                        </div>""",
+                        icon_size=(140, 36), icon_anchor=(0, 0),
+                    ),
+                ).add_to(m)
 
         folium.LayerControl(collapsed=False).add_to(m)
-
         legend = """
         <div class="legend-box">
           <b>Legenda Tahun:</b><br>
@@ -431,13 +424,214 @@ with tab_peta:
           <span style="color:blue">&#9679;</span> 2024<br>
           <span style="color:orange">&#9679;</span> 2023<br>
           <span style="color:red">&#9679;</span> &lt; 2023<br>
-          <span style="color:purple">&#9679;</span> Obyek Penilaian
-        </div>
-        """
+          <span style="color:#c0392b;font-size:14px">🏠</span> Obyek Penilaian<br>
+          <span style="color:#e74c3c">&#9135;&#9135;</span> Garis Jarak
+        </div>"""
         m.get_root().html.add_child(folium.Element(legend))
 
-        st.caption(f"Menampilkan **{len(map_df)}** titik lokasi di peta.")
-        st_folium(m, width="100%", height=680, returned_objects=[])
+        # ── Split layout: peta kiri | panel detail kanan ────────────────
+        col_map, col_detail = st.columns([3, 2], gap="medium")
+
+        with col_map:
+            n_subj = map_df["Nomor"].astype(str).str.lower().str.contains("obyek").sum()
+            n_comp = len(map_df) - n_subj
+            st.caption(
+                f"**{n_subj}** Obyek Penilaian + **{n_comp}** Data Pembanding"
+                f" — klik marker untuk detail di panel kanan"
+            )
+            result = st_folium(
+                m, width="100%", height=620,
+                returned_objects=["last_object_clicked"],
+                key="folium_peta",
+            )
+            # Simpan marker yang diklik ke session_state
+            if result and result.get("last_object_clicked"):
+                c = result["last_object_clicked"]
+                lat_c, lng_c = c.get("lat"), c.get("lng")
+                if lat_c is not None and lng_c is not None and not map_df.empty:
+                    dists = (
+                        (map_df["Latitude"]  - lat_c) ** 2 +
+                        (map_df["Longitude"] - lng_c) ** 2
+                    )
+                    if dists.min() < 1e-5:
+                        st.session_state["peta_sel"] = int(dists.idxmin())
+
+        # ── Panel detail ─────────────────────────────────────────────────
+        with col_detail:
+            sel_idx = st.session_state.get("peta_sel")
+            if sel_idx is None or sel_idx not in map_df.index:
+                st.markdown("""
+                <div style="text-align:center;padding:60px 20px;color:#bbb;
+                            border:2px dashed #e0e0e0;border-radius:10px;margin-top:40px">
+                  <div style="font-size:48px">👆</div>
+                  <div style="font-size:14px;margin-top:12px;line-height:1.6">
+                    Klik marker di peta<br>untuk melihat detail properti
+                  </div>
+                </div>""", unsafe_allow_html=True)
+            else:
+                row      = map_df.loc[sel_idx]
+                nomor_d  = str(safe_get(row, "Nomor")).strip()
+                is_s     = "obyek" in nomor_d.lower()
+                tahun_d  = row.get("Tahun_Bersih") if hasattr(row, "get") else getattr(row, "Tahun_Bersih", None)
+                harga_d  = format_currency(getattr(row, "Harga_Tanah", None))
+                foto_url = str(safe_get(row, "Foto", ""))
+                lh3_url, thumb_url = gdrive_thumbnail(foto_url, width=500)
+
+                # Tombol tutup
+                if st.button("✕ Tutup", key="tutup_detail"):
+                    st.session_state.pop("peta_sel", None)
+                    st.rerun()
+
+                # Header
+                if is_s:
+                    st.markdown(
+                        '<div style="background:#fdecea;border-left:4px solid #c0392b;'
+                        'padding:8px 12px;border-radius:0 6px 6px 0;margin-bottom:8px">'
+                        '<b style="color:#c0392b;font-size:15px">🏠 Obyek Penilaian</b></div>',
+                        unsafe_allow_html=True)
+                else:
+                    jenis_d = safe_get(row, "Jenis_Data")
+                    badge   = "#e67e22" if "penawaran" in str(jenis_d).lower() else "#2980b9"
+                    tahun_lbl = f"· {int(tahun_d)}" if tahun_d and not pd.isna(tahun_d) else ""
+                    st.markdown(
+                        f'<div style="background:#eafaf1;border-left:4px solid #27ae60;'
+                        f'padding:8px 12px;border-radius:0 6px 6px 0;margin-bottom:8px;'
+                        f'display:flex;align-items:center;gap:8px">'
+                        f'<b style="color:#1a7a4a;font-size:15px">Data {nomor_d}</b>'
+                        f'<span style="background:{badge};color:white;border-radius:10px;'
+                        f'padding:1px 8px;font-size:11px">{jenis_d}</span>'
+                        f'<span style="color:#999;font-size:12px;margin-left:auto">{tahun_lbl}</span>'
+                        f'</div>',
+                        unsafe_allow_html=True)
+
+                # Foto
+                if lh3_url:
+                    st.markdown(
+                        f'<img src="{lh3_url}" '
+                        f'style="width:100%;border-radius:8px;border:1px solid #e0e0e0;'
+                        f'box-shadow:0 2px 8px rgba(0,0,0,0.12);margin-bottom:4px" '
+                        f'referrerpolicy="no-referrer" '
+                        f'onerror="this.src=\'{thumb_url}\';this.onerror=null;">',
+                        unsafe_allow_html=True)
+
+                # Galeri foto obyek (foto mini horizontal)
+                if is_s:
+                    foto_extra = [
+                        (safe_get(row, "Foto_Dalam",         ""), "Dalam"),
+                        (safe_get(row, "Foto_Samping_Kanan", ""), "Kanan"),
+                        (safe_get(row, "Foto_Samping_Kiri",  ""), "Kiri"),
+                        (safe_get(row, "Gambar_Situasi",     ""), "Situasi"),
+                    ]
+                    valid_extra = [(u, lb) for u, lb in foto_extra
+                                   if u not in ("", "#", "-", "nan", "None")]
+                    if valid_extra:
+                        gcols = st.columns(len(valid_extra))
+                        for gc, (u, lb) in zip(gcols, valid_extra):
+                            l3, th = gdrive_thumbnail(u, width=200)
+                            if l3:
+                                gc.markdown(
+                                    f'<img src="{l3}" style="width:100%;border-radius:5px;'
+                                    f'border:1px solid #ddd" referrerpolicy="no-referrer" '
+                                    f'onerror="this.src=\'{th}\';this.onerror=null;">',
+                                    unsafe_allow_html=True)
+                                gc.caption(lb)
+
+                # Link bar
+                links_html = []
+                if lh3_url and foto_url not in ("", "#", "-", "nan", "None"):
+                    links_html.append(f'<a href="{foto_url}" target="_blank" '
+                                      f'style="color:#2980b9;text-decoration:none;font-size:12px">'
+                                      f'&#128247; Foto Depan &#8599;</a>')
+                fj = str(safe_get(row, "Foto_Jalan", ""))
+                if fj not in ("", "#", "-", "nan", "None"):
+                    links_html.append(f'<a href="{fj}" target="_blank" '
+                                      f'style="color:#2980b9;text-decoration:none;font-size:12px">'
+                                      f'&#128247; Foto Jalan &#8599;</a>')
+                sv_url_d = generate_streetview_url(
+                    safe_get(row, "Latitude"), safe_get(row, "Longitude"))
+                links_html.append(f'<a href="{sv_url_d}" target="_blank" '
+                                   f'style="color:#2980b9;text-decoration:none;font-size:12px">'
+                                   f'&#128269; Street View &#8599;</a>')
+                st.markdown(
+                    '<div style="display:flex;gap:14px;margin:6px 0 10px;flex-wrap:wrap">'
+                    + " ".join(links_html) + "</div>",
+                    unsafe_allow_html=True)
+
+                # Kartu harga (Data Pembanding)
+                if not is_s:
+                    ht = getattr(row, "Harga_Total", None)
+                    ht_str = format_currency(ht) if (ht and not pd.isna(ht)) else None
+                    c1, c2 = st.columns(2)
+                    if ht_str:
+                        c1.metric("Harga Total", ht_str)
+                    c2.metric("Harga/m²", harga_d)
+
+                # ── Info sections ─────────────────────────────────────────
+                def info_row(label, val):
+                    v = str(val) if val not in ("-", None, "") else "—"
+                    st.markdown(
+                        f'<div style="display:flex;border-bottom:1px solid #f0f0f0;'
+                        f'padding:4px 0;font-size:12.5px">'
+                        f'<span style="color:#888;min-width:110px;flex-shrink:0">{label}</span>'
+                        f'<span style="color:#222">{v}</span></div>',
+                        unsafe_allow_html=True)
+
+                def info_2col(l1, v1, l2, v2):
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        info_row(l1, v1)
+                    with c2:
+                        info_row(l2, v2)
+
+                def sec_hdr(icon, title):
+                    st.markdown(
+                        f'<div style="background:#f0faf5;color:#1a7a4a;font-size:10px;'
+                        f'font-weight:bold;text-transform:uppercase;letter-spacing:0.6px;'
+                        f'padding:3px 8px;border-radius:3px;margin:10px 0 4px">'
+                        f'{icon} {title}</div>',
+                        unsafe_allow_html=True)
+
+                if is_s:
+                    sec_hdr("📋", "Identitas")
+                    info_2col("Pemilik",       safe_get(row,"Pemilik"),
+                              "Jenis",          safe_get(row,"Jenis_Properti"))
+                    info_2col("Kode Inspeksi", safe_get(row,"Kode_Inspeksi"),
+                              "Reviewer",       safe_get(row,"Reviewer"))
+                    info_row("Pemberi Tugas",  safe_get(row,"Pemberi_Tugas"))
+                else:
+                    sec_hdr("📋", "Properti")
+                    info_2col("Jenis",     safe_get(row,"Jenis_Properti"),
+                              "Tahun",     int(tahun_d) if tahun_d and not pd.isna(tahun_d) else "—")
+
+                sec_hdr("📍", "Lokasi")
+                info_row("Alamat",    safe_get(row,"Alamat"))
+                info_row("Kompleks",  safe_get(row,"Kompleks"))
+                info_2col("Kelurahan", safe_get(row,"Kelurahan"),
+                          "Kecamatan", safe_get(row,"Kecamatan"))
+                info_2col("Kota",      safe_get(row,"Kota"),
+                          "Propinsi",  safe_get(row,"Propinsi"))
+
+                sec_hdr("📐", "Fisik")
+                def _luas(col):
+                    v = getattr(row, col, None)
+                    if v is None or (isinstance(v, float) and pd.isna(v)):
+                        return "—"
+                    try:
+                        return f"{float(v):,.0f} m²".replace(",", ".")
+                    except Exception:
+                        return str(v)
+                info_2col("Luas Tanah",   _luas("Luas_Tanah"),
+                          "Luas Bangunan", _luas("Luas_Bangunan"))
+                if not is_s:
+                    info_2col("Kondisi Bgn", safe_get(row,"Kondisi_Bangunan"),
+                              "Kelas Bgn",   safe_get(row,"Kelas_Bangunan"))
+                info_2col("Peruntukan",  safe_get(row,"Peruntukan"),
+                          "Kepemilikan", safe_get(row,"Kepemilikan"))
+
+                if not is_s:
+                    sec_hdr("📞", "Kontak")
+                    info_2col("Nama",  safe_get(row,"Kontak"),
+                              "Telp",  safe_get(row,"Telp"))
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # TAB 3 — TABEL DATA
