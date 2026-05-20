@@ -1080,8 +1080,9 @@ with tab_peta:
                 if is_s:
                     st.markdown(
                         '<div style="background:#fdecea;border-left:4px solid #c0392b;'
-                        'padding:8px 12px;border-radius:0 6px 6px 0;margin-bottom:8px">'
-                        '<b style="color:#c0392b;font-size:15px">🏠 Obyek Penilaian</b></div>',
+                        'padding:5px 10px;border-radius:0 5px 5px 0;margin-bottom:5px;'
+                        'font-family:-apple-system,sans-serif">'
+                        '<b style="color:#c0392b;font-size:13px">🏠 Obyek Penilaian</b></div>',
                         unsafe_allow_html=True)
                 else:
                     jenis_d  = safe_get(row, "Jenis_Data")
@@ -1089,12 +1090,12 @@ with tab_peta:
                     thn_lbl  = f"· {int(tahun_d)}" if tahun_d and not pd.isna(tahun_d) else ""
                     st.markdown(
                         f'<div style="background:#eafaf1;border-left:4px solid #27ae60;'
-                        f'padding:8px 12px;border-radius:0 6px 6px 0;margin-bottom:8px;'
-                        f'display:flex;align-items:center;gap:8px">'
-                        f'<b style="color:#1a7a4a;font-size:15px">Data {nomor_d}</b>'
-                        f'<span style="background:{badge};color:white;border-radius:10px;'
-                        f'padding:1px 8px;font-size:11px">{jenis_d}</span>'
-                        f'<span style="color:#999;font-size:12px;margin-left:auto">{thn_lbl}</span>'
+                        f'padding:5px 10px;border-radius:0 5px 5px 0;margin-bottom:5px;'
+                        f'display:flex;align-items:center;gap:6px;font-family:-apple-system,sans-serif">'
+                        f'<b style="color:#1a7a4a;font-size:13px">Data {nomor_d}</b>'
+                        f'<span style="background:{badge};color:white;border-radius:8px;'
+                        f'padding:1px 6px;font-size:10px">{jenis_d}</span>'
+                        f'<span style="color:#bbb;font-size:11px;margin-left:auto">{thn_lbl}</span>'
                         f'</div>',
                         unsafe_allow_html=True)
 
@@ -1102,8 +1103,9 @@ with tab_peta:
                 if lh3_url:
                     st.markdown(
                         f'<img src="{lh3_url}" '
-                        f'style="width:100%;border-radius:8px;border:1px solid #e0e0e0;'
-                        f'box-shadow:0 2px 8px rgba(0,0,0,0.12);margin-bottom:4px" '
+                        f'style="width:100%;max-height:180px;object-fit:cover;'
+                        f'border-radius:6px;border:1px solid #e0e0e0;'
+                        f'box-shadow:0 1px 4px rgba(0,0,0,0.1);margin-bottom:3px" '
                         f'referrerpolicy="no-referrer" '
                         f'onerror="this.src=\'{thumb_url}\';this.onerror=null;">',
                         unsafe_allow_html=True)
@@ -1146,81 +1148,93 @@ with tab_peta:
                               f'style="color:#2980b9;text-decoration:none;font-size:12px">'
                               f'&#128269; Street View &#8599;</a>')
                 st.markdown(
-                    '<div style="display:flex;gap:14px;margin:6px 0 10px;flex-wrap:wrap">'
+                    '<div style="display:flex;gap:10px;margin:3px 0 5px;flex-wrap:wrap;'
+                    'font-family:-apple-system,sans-serif">'
                     + " ".join(links) + "</div>", unsafe_allow_html=True)
 
-                # Harga (Data Pembanding)
+                # Harga card (compact inline, bukan st.metric)
                 if not is_s:
                     ht = row.get("Harga_Total")
-                    c1, c2 = st.columns(2)
-                    if ht and not pd.isna(ht):
-                        c1.metric("Harga Total", format_currency(ht))
-                    c2.metric("Harga/m²", harga_d)
+                    ht_str = format_currency(ht) if ht and not pd.isna(ht) else "—"
+                    st.markdown(f"""
+                    <div style="display:flex;gap:5px;margin:4px 0 5px;font-family:-apple-system,sans-serif">
+                      <div style="flex:1;background:#f0fdf4;border-left:3px solid #27ae60;
+                                  padding:4px 7px;border-radius:0 4px 4px 0">
+                        <div style="font-size:9px;color:#888;text-transform:uppercase;
+                                    letter-spacing:.5px;margin-bottom:1px">Harga Total</div>
+                        <div style="font-size:12px;font-weight:700;color:#1a7a4a">{ht_str}</div>
+                      </div>
+                      <div style="flex:1;background:#eff6ff;border-left:3px solid #2980b9;
+                                  padding:4px 7px;border-radius:0 4px 4px 0">
+                        <div style="font-size:9px;color:#888;text-transform:uppercase;
+                                    letter-spacing:.5px;margin-bottom:1px">Harga/m²</div>
+                        <div style="font-size:12px;font-weight:700;color:#1a4a7a">{harga_d}</div>
+                      </div>
+                    </div>""", unsafe_allow_html=True)
 
-                # Helper functions
-                def info_row(label, val):
-                    v = str(val) if val not in ("-", None, "") else "—"
-                    st.markdown(
-                        f'<div style="display:flex;border-bottom:1px solid #f0f0f0;'
-                        f'padding:4px 0;font-size:12.5px">'
-                        f'<span style="color:#888;min-width:110px;flex-shrink:0">{label}</span>'
-                        f'<span style="color:#222">{v}</span></div>',
-                        unsafe_allow_html=True)
+                # ── Info table (semua dalam 1 blok HTML, tanpa st.columns) ──
+                FF = "font-family:-apple-system,'Segoe UI',sans-serif"
+                SH = (f"display:block;background:#f0faf5;color:#1a7a4a;font-size:9px;"
+                      f"font-weight:700;text-transform:uppercase;letter-spacing:.6px;"
+                      f"padding:2px 6px;border-radius:3px;margin-top:7px;margin-bottom:1px;{FF}")
+                def r1(lbl, val):
+                    v = str(val) if str(val) not in ("-","","None","nan") else "—"
+                    return (f'<div style="display:flex;border-bottom:1px solid #f3f3f3;'
+                            f'padding:2px 0;{FF}">'
+                            f'<span style="color:#aaa;font-size:10px;min-width:90px;'
+                            f'flex-shrink:0">{lbl}</span>'
+                            f'<span style="color:#1a1a1a;font-size:11px;font-weight:500">{v}</span></div>')
+                def r2(l1,v1,l2,v2):
+                    def _v(x): return str(x) if str(x) not in ("-","","None","nan") else "—"
+                    return (f'<div style="display:grid;grid-template-columns:1fr 1fr;'
+                            f'gap:0 4px;border-bottom:1px solid #f3f3f3;padding:2px 0;{FF}">'
+                            f'<div><span style="display:block;color:#aaa;font-size:9.5px">{l1}</span>'
+                            f'<span style="color:#1a1a1a;font-size:11px;font-weight:500">{_v(v1)}</span></div>'
+                            f'<div><span style="display:block;color:#aaa;font-size:9.5px">{l2}</span>'
+                            f'<span style="color:#1a1a1a;font-size:11px;font-weight:500">{_v(v2)}</span></div>'
+                            f'</div>')
 
-                def info_2col(l1, v1, l2, v2):
-                    c1, c2 = st.columns(2)
-                    with c1: info_row(l1, v1)
-                    with c2: info_row(l2, v2)
+                html = []
+                if is_s:
+                    html.append(f'<span style="{SH}">📋 Identitas</span>')
+                    html.append(r2("Pemilik",       safe_get(row,"Pemilik"),
+                                   "Jenis",          safe_get(row,"Jenis_Properti")))
+                    html.append(r2("Kode Inspeksi", safe_get(row,"Kode_Inspeksi"),
+                                   "Reviewer",       safe_get(row,"Reviewer")))
+                    html.append(r1("Pemberi Tugas", safe_get(row,"Pemberi_Tugas")))
+                else:
+                    html.append(f'<span style="{SH}">📋 Properti</span>')
+                    thn_v = int(tahun_d) if tahun_d and not pd.isna(tahun_d) else "—"
+                    html.append(r2("Jenis", safe_get(row,"Jenis_Properti"), "Tahun", thn_v))
 
-                def sec_hdr(icon, title):
-                    st.markdown(
-                        f'<div style="background:#f0faf5;color:#1a7a4a;font-size:10px;'
-                        f'font-weight:bold;text-transform:uppercase;letter-spacing:0.6px;'
-                        f'padding:3px 8px;border-radius:3px;margin:10px 0 4px">'
-                        f'{icon} {title}</div>', unsafe_allow_html=True)
+                html.append(f'<span style="{SH}">📍 Lokasi</span>')
+                html.append(r1("Alamat",   safe_get(row,"Alamat")))
+                html.append(r1("Kompleks", safe_get(row,"Kompleks")))
+                html.append(r2("Kelurahan", safe_get(row,"Kelurahan"),
+                               "Kecamatan", safe_get(row,"Kecamatan")))
+                html.append(r2("Kota",     safe_get(row,"Kota"),
+                               "Propinsi", safe_get(row,"Propinsi")))
 
+                html.append(f'<span style="{SH}">📐 Fisik</span>')
                 def _luas(col):
                     v = row.get(col)
-                    if v is None or (isinstance(v, float) and pd.isna(v)):
-                        return "—"
-                    try:
-                        return f"{float(v):,.0f} m²".replace(",", ".")
-                    except Exception:
-                        return str(v)
-
-                if is_s:
-                    sec_hdr("📋", "Identitas")
-                    info_2col("Pemilik",       safe_get(row, "Pemilik"),
-                              "Jenis",          safe_get(row, "Jenis_Properti"))
-                    info_2col("Kode Inspeksi", safe_get(row, "Kode_Inspeksi"),
-                              "Reviewer",       safe_get(row, "Reviewer"))
-                    info_row("Pemberi Tugas",  safe_get(row, "Pemberi_Tugas"))
-                else:
-                    sec_hdr("📋", "Properti")
-                    info_2col("Jenis", safe_get(row, "Jenis_Properti"),
-                              "Tahun", int(tahun_d) if tahun_d and not pd.isna(tahun_d) else "—")
-
-                sec_hdr("📍", "Lokasi")
-                info_row("Alamat",    safe_get(row, "Alamat"))
-                info_row("Kompleks",  safe_get(row, "Kompleks"))
-                info_2col("Kelurahan", safe_get(row, "Kelurahan"),
-                          "Kecamatan", safe_get(row, "Kecamatan"))
-                info_2col("Kota",      safe_get(row, "Kota"),
-                          "Propinsi",  safe_get(row, "Propinsi"))
-
-                sec_hdr("📐", "Fisik")
-                info_2col("Luas Tanah",    _luas("Luas_Tanah"),
-                          "Luas Bangunan", _luas("Luas_Bangunan"))
+                    if v is None or (isinstance(v, float) and pd.isna(v)): return "—"
+                    try: return f"{float(v):,.0f} m²".replace(",",".")
+                    except: return str(v)
+                html.append(r2("Luas Tanah",    _luas("Luas_Tanah"),
+                               "Luas Bangunan", _luas("Luas_Bangunan")))
                 if not is_s:
-                    info_2col("Kondisi Bgn", safe_get(row, "Kondisi_Bangunan"),
-                              "Kelas Bgn",   safe_get(row, "Kelas_Bangunan"))
-                info_2col("Peruntukan",  safe_get(row, "Peruntukan"),
-                          "Kepemilikan", safe_get(row, "Kepemilikan"))
+                    html.append(r2("Kondisi Bgn", safe_get(row,"Kondisi_Bangunan"),
+                                   "Kelas Bgn",   safe_get(row,"Kelas_Bangunan")))
+                html.append(r2("Peruntukan", safe_get(row,"Peruntukan"),
+                               "Kepemilikan", safe_get(row,"Kepemilikan")))
 
                 if not is_s:
-                    sec_hdr("📞", "Kontak")
-                    info_2col("Nama", safe_get(row, "Kontak"),
-                              "Telp", safe_get(row, "Telp"))
+                    html.append(f'<span style="{SH}">📞 Kontak</span>')
+                    html.append(r2("Nama", safe_get(row,"Kontak"),
+                                   "Telp", safe_get(row,"Telp")))
+
+                st.markdown("".join(html), unsafe_allow_html=True)
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # TAB 3 — TABEL DATA
