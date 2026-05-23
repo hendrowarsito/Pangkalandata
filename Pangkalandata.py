@@ -312,6 +312,32 @@ def load_bangunan_sheet(uploaded_file):
         df["Luas_Bangunan"] = df["Luas_Bangunan"].apply(parse_indo_number)
     return df
 
+@st.cache_data(show_spinner=False)
+def load_btb_sheet(uploaded_file):
+    """Baca sheet Data BTB sebagai tabel flat; return dict {Kelas_Bangunan: Biaya_BTB}."""
+    try:
+        xl = pd.ExcelFile(uploaded_file)
+        if "Data BTB" not in xl.sheet_names:
+            return pd.DataFrame()
+        df = pd.read_excel(uploaded_file, sheet_name="Data BTB")
+    except Exception:
+        return pd.DataFrame()
+    if df.empty:
+        return pd.DataFrame()
+    # Normalkan nama kolom
+    df.columns = [str(c).strip() for c in df.columns]
+    rename_btb = {}
+    for c in df.columns:
+        cl = c.lower()
+        if "kelas" in cl and "bangunan" in cl:
+            rename_btb[c] = "Kelas_Bangunan"
+        elif "pembulatan" in cl:
+            rename_btb[c] = "Biaya_BTB"
+    df = df.rename(columns=rename_btb)
+    if "Biaya_BTB" in df.columns:
+        df["Biaya_BTB"] = df["Biaya_BTB"].apply(parse_indo_number)
+    return df
+
 def load_pembanding_sheet(file):
     try:
         df = _transpose_sheet(file, "Data Pembanding")
@@ -331,11 +357,11 @@ def load_pembanding_sheet(file):
         df["Longitude"] = coords["Longitude"]
 
     # Numerik
-    for col in ["Harga_Total", "Luas_Tanah", "Luas_Bangunan"]:
+    for col in ["Harga_Total", "Luas_Tanah", "Luas_Bangunan", "Kondisi_Bangunan"]:
         if col in df.columns:
             df[col] = df[col].apply(parse_indo_number)
 
-    # Harga per m²
+    # Harga per m² — sementara pakai rumus sederhana; akan dikoreksi BTB setelah load
     if "Harga_Total" in df.columns and "Luas_Tanah" in df.columns:
         df["Harga_Tanah"] = (df["Harga_Total"] / df["Luas_Tanah"]).round(0)
 
@@ -429,7 +455,31 @@ def load_data(uploaded_file):
 
 df = load_data(file)
 df_bangunan = load_bangunan_sheet(file)
+df_btb      = load_btb_sheet(file)
 df["Tahun_Bersih"] = df["Tahun"].apply(bersihkan_tahun) if "Tahun" in df.columns else pd.Series(dtype=float)
+
+# ── Koreksi Harga_Tanah dengan ekstraksi nilai bangunan (BTB) ──────────────
+# Rumus: (Harga_Total − Luas_Bangunan × (Kondisi/100) × Biaya_BTB) / Luas_Tanah
+if (not df_btb.empty
+        and "Kelas_Bangunan" in df_btb.columns
+        and "Biaya_BTB" in df_btb.columns):
+    btb_map = (df_btb
+               .dropna(subset=["Kelas_Bangunan", "Biaya_BTB"])
+               .assign(Kelas_Bangunan=lambda x: x["Kelas_Bangunan"].astype(str).str.strip())
+               .set_index("Kelas_Bangunan")["Biaya_BTB"]
+               .to_dict())
+    mask_comp = df.get("_sumber", pd.Series()) == "Data Pembanding"
+    if mask_comp.any() and "Kelas_Bangunan" in df.columns:
+        df_c = df[mask_comp].copy()
+        df_c["Kelas_Bangunan"] = df_c["Kelas_Bangunan"].astype(str).str.strip()
+        df_c["_Biaya_BTB"] = df_c["Kelas_Bangunan"].map(btb_map)
+        need = ["Harga_Total", "Luas_Bangunan", "Kondisi_Bangunan", "Luas_Tanah", "_Biaya_BTB"]
+        has_all = df_c[need].notna().all(axis=1) & (df_c["Luas_Tanah"] > 0)
+        if has_all.any():
+            sub = df_c[has_all]
+            nilai_bgn = sub["Luas_Bangunan"] * (sub["Kondisi_Bangunan"] / 100) * sub["_Biaya_BTB"]
+            harga_baru = ((sub["Harga_Total"] - nilai_bgn) / sub["Luas_Tanah"]).round(0)
+            df.loc[harga_baru.index, "Harga_Tanah"] = harga_baru
 
 # Tunjukkan format yang terdeteksi
 _fmt = df["_format"].iloc[0] if "_fmt" not in st.session_state and not df.empty and "_format" in df.columns else ""
