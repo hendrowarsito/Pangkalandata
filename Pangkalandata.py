@@ -2,7 +2,7 @@ import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
 import folium
-from folium.plugins import MarkerCluster, HeatMap
+from folium.plugins import HeatMap
 from streamlit_folium import st_folium
 import plotly.express as px
 import plotly.graph_objects as go
@@ -291,6 +291,27 @@ RENAME_PROPERTI = {
     "Reviewer":                         "Reviewer",
 }
 
+RENAME_BANGUNAN = {
+    "Kode Inspeksi":    "Kode_Inspeksi",
+    "Tanggal Inspeksi": "Tanggal_Inspeksi",
+    "Jenis Bangunan":   "Jenis_Bangunan",
+    "Luas Bangunan":    "Luas_Bangunan",
+    "Nomor Bangunan":   "Nomor_Bangunan",
+}
+
+@st.cache_data(show_spinner=False)
+def load_bangunan_sheet(uploaded_file):
+    try:
+        df = _transpose_sheet(uploaded_file, "Data Bangunan")
+    except Exception:
+        return pd.DataFrame()
+    if df.empty:
+        return pd.DataFrame()
+    df = df.rename(columns={k: v for k, v in RENAME_BANGUNAN.items() if k in df.columns})
+    if "Luas_Bangunan" in df.columns:
+        df["Luas_Bangunan"] = df["Luas_Bangunan"].apply(parse_indo_number)
+    return df
+
 def load_pembanding_sheet(file):
     try:
         df = _transpose_sheet(file, "Data Pembanding")
@@ -407,6 +428,7 @@ def load_data(uploaded_file):
     return df
 
 df = load_data(file)
+df_bangunan = load_bangunan_sheet(file)
 df["Tahun_Bersih"] = df["Tahun"].apply(bersihkan_tahun) if "Tahun" in df.columns else pd.Series(dtype=float)
 
 # Tunjukkan format yang terdeteksi
@@ -442,7 +464,6 @@ else:
 st.sidebar.divider()
 st.sidebar.markdown("**Opsi Peta:**")
 show_heatmap  = st.sidebar.checkbox("🌡️ Heatmap Harga", value=False)
-use_clustering = st.sidebar.checkbox("🔵 Marker Clustering", value=True)
 
 if "tampilkan" not in st.session_state:
     st.session_state["tampilkan"] = False
@@ -721,11 +742,8 @@ with tab_peta:
                     ),
                 ).add_to(lines_fg)
 
-        # ── Layer marker data pembanding (bisa di-cluster) ──────────────────
-        if use_clustering:
-            marker_layer = MarkerCluster(name="Data Pembanding").add_to(m)
-        else:
-            marker_layer = folium.FeatureGroup(name="Data Pembanding").add_to(m)
+        # ── Layer marker data pembanding — selalu individual pin ────────────
+        marker_layer = folium.FeatureGroup(name="Data Pembanding").add_to(m)
 
         # ── Layer Obyek Penilaian — selalu terpisah, tidak masuk cluster ────
         subj_layer = folium.FeatureGroup(name="🏠 Obyek Penilaian", show=True).add_to(m)
@@ -1218,8 +1236,20 @@ with tab_peta:
                     P.append(r2("Pemilik", safe_get(row,"Pemilik"),
                                 "Jenis",   safe_get(row,"Jenis_Properti")))
                     P.append(r2("Kode Inspeksi", safe_get(row,"Kode_Inspeksi"),
-                                "Reviewer",      safe_get(row,"Reviewer")))
-                    P.append(r1("Pemberi Tugas", safe_get(row,"Pemberi_Tugas")))
+                                "Tgl Inspeksi",  safe_get(row,"Tanggal_Inspeksi")))
+                    P.append(r2("Reviewer",       safe_get(row,"Reviewer"),
+                                "Pemberi Tugas",  safe_get(row,"Pemberi_Tugas")))
+                    # Data Bangunan dari sheet terpisah
+                    kode_ins = safe_get(row, "Kode_Inspeksi")
+                    if not df_bangunan.empty and kode_ins and kode_ins != "—" and "Kode_Inspeksi" in df_bangunan.columns:
+                        bgn_rows = df_bangunan[df_bangunan["Kode_Inspeksi"] == kode_ins]
+                        if not bgn_rows.empty:
+                            P.append(sh("🏗️", "Bangunan"))
+                            for _, br in bgn_rows.iterrows():
+                                jenis_bgn = str(br.get("Jenis_Bangunan", "")) if pd.notna(br.get("Jenis_Bangunan")) else "—"
+                                luas_bgn  = br.get("Luas_Bangunan")
+                                luas_bgn_fmt = f"{luas_bgn:,.0f} m²" if pd.notna(luas_bgn) else "—"
+                                P.append(r2("Jenis Bangunan", jenis_bgn, "Luas Bangunan", luas_bgn_fmt))
                 else:
                     P.append(sh("📋", "Properti"))
                     thn_v = int(tahun_d) if tahun_d and not pd.isna(tahun_d) else "—"
