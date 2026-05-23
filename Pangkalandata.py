@@ -1393,6 +1393,29 @@ with tab_analisa:
         "**harga indikasi** dan **koefisien variasi (CV)** sesuai standar penilaian."
     )
 
+    # ── Lookup tables ─────────────────────────────────────────────────────────
+    _RANK_KEP = {
+        "SHM": 4, "SHSRS": 3, "SHGB": 2, "HGB": 2,
+        "SHP": 1, "HP": 1, "HGU": 1, "Girik/AJB": 0, "Lainnya": 1,
+    }
+    _ROAD_SCORE = {"Arteri": 4, "Kolektor": 3, "Lokal": 2, "Lingkungan": 1}
+    _OWN_OPTS  = list(_RANK_KEP.keys())
+    _ROAD_OPTS = list(_ROAD_SCORE.keys())
+
+    def _road_total(kelas, lebar):
+        sc = _ROAD_SCORE.get(str(kelas), 2)
+        w  = float(lebar) if lebar else 8.0
+        if w >= 20: sc += 1
+        elif w < 10: sc -= 1
+        return sc
+
+    def _detect_kep(val):
+        v = str(val).strip().upper().replace(" ", "")
+        for k in _OWN_OPTS:
+            if k.upper().replace(" ", "") in v:
+                return k
+        return "Lainnya"
+
     if filtered.empty:
         st.warning("Tidak ada data yang sesuai dengan filter.")
     else:
@@ -1406,25 +1429,47 @@ with tab_analisa:
             st.markdown("#### 🏠 Obyek Penilaian")
             if not subject_rows.empty:
                 s = subject_rows.iloc[0]
+                subj_luas  = float(s.get("Luas_Tanah") or 0)
+                _h = s.get("Harga_Tanah")
+                subj_harga = float(_h) if (_h is not None and not pd.isna(_h)) else 0.0
+                harga_disp = format_currency(subj_harga) + "/m²" if subj_harga > 0 else "belum dinilai"
                 st.info(
                     f"**Alamat:** {s.get('Alamat', '-')}  \n"
                     f"**Kecamatan:** {s.get('Kecamatan', '-')}  \n"
-                    f"**Luas Tanah:** {s.get('Luas_Tanah', '-')} m²  \n"
-                    f"**Harga Indikasi Awal:** {format_currency(s.get('Harga_Tanah', 0))}/m²"
+                    f"**Luas Tanah:** {subj_luas:,.0f} m²  \n"
+                    f"**Kepemilikan:** {s.get('Kepemilikan', '-')}  \n"
+                    f"**Harga Indikasi Awal:** {harga_disp}"
                 )
-                subj_luas  = float(s.get("Luas_Tanah") or 0)
-                subj_harga = float(s.get("Harga_Tanah") or 0)
+                _kep_def = _detect_kep(s.get("Kepemilikan", "SHM"))
+                subj_kep = st.selectbox("Bukti Kepemilikan Obyek", _OWN_OPTS,
+                                        index=_OWN_OPTS.index(_kep_def) if _kep_def in _OWN_OPTS else 0,
+                                        key="an_subj_kep")
             else:
                 st.warning("Tidak ada baris 'Obyek Penilaian' di data. Masukkan manual:")
                 subj_luas  = st.number_input("Luas Tanah Obyek (m²)", value=0.0, min_value=0.0, step=10.0)
-                subj_harga = st.number_input("Harga Indikasi Obyek (Rp/m²)", value=0.0, min_value=0.0, step=100000.0)
+                subj_harga = 0.0
+                subj_kep   = st.selectbox("Bukti Kepemilikan Obyek", _OWN_OPTS, key="an_subj_kep")
+
+            st.markdown("##### 🛣️ Lokasi Obyek")
+            subj_road_cls = st.selectbox("Kelas Jalan Obyek", _ROAD_OPTS, index=1, key="an_subj_road_cls")
+            subj_road_w   = st.number_input("Lebar Jalan Obyek (m)", value=12.0,
+                                             min_value=1.0, max_value=60.0, step=1.0, key="an_subj_road_w")
 
             st.markdown("#### ⚙️ Parameter Koreksi")
-            ref_year      = st.number_input("Tahun Referensi Penilaian", value=2025, min_value=2000, max_value=2100, step=1)
-            time_adj_pct  = st.number_input("Koreksi Waktu (%/tahun)", value=5.0, min_value=0.0, max_value=50.0, step=0.5,
-                                             help="Kenaikan harga pasar per tahun (positif = pasar naik)")
-            size_adj_pct  = st.number_input("Koreksi Luas (%/100m²)", value=2.0, min_value=0.0, max_value=20.0, step=0.5,
-                                             help="Penyesuaian harga akibat perbedaan luas per 100m²")
+            ref_year       = st.number_input("Tahun Referensi Penilaian", value=2025,
+                                              min_value=2000, max_value=2100, step=1)
+            diskon_pct     = st.number_input("Diskon Penawaran (%)", value=10.0,
+                                              min_value=0.0, max_value=50.0, step=0.5,
+                                              help="Diskon dari harga penawaran ke harga transaksi (berlaku untuk semua data pembanding)")
+            time_adj_pct   = st.number_input("Koreksi Waktu (%/tahun)", value=5.0,
+                                              min_value=0.0, max_value=50.0, step=0.5,
+                                              help="Kenaikan harga pasar per tahun (positif = pasar naik)")
+            size_adj_pct   = st.number_input("Koreksi Luas (%/100m²)", value=0.5,
+                                              min_value=0.0, max_value=20.0, step=0.5,
+                                              help="Penyesuaian harga akibat perbedaan luas per 100m²")
+            lokasi_ppt     = st.number_input("Koreksi Lokasi (%/poin)", value=5.0,
+                                              min_value=0.0, max_value=20.0, step=0.5,
+                                              help="Penyesuaian per poin perbedaan skor lokasi (kelas jalan + lebar)")
 
         with col_comp:
             st.markdown("#### 📋 Pilih Data Pembanding")
@@ -1439,45 +1484,103 @@ with tab_analisa:
                 )
 
                 if selected:
-                    comp = comparable_rows[comparable_rows["Nomor"].astype(str).isin(selected)].copy()
+                    comp = (comparable_rows[comparable_rows["Nomor"].astype(str).isin(selected)]
+                            .copy().reset_index(drop=True))
+
+                    # ── Editable per-comparable adjustment table ─────────────────
+                    st.markdown("##### ✏️ Penyesuaian Per Data Pembanding")
+                    st.caption(
+                        "Kepemilikan otomatis terbaca dari data. "
+                        "Isi Kelas/Lebar Jalan dan Kor. Peruntukan untuk setiap pembanding."
+                    )
+                    edit_init = pd.DataFrame({
+                        "No":                   comp["Nomor"].astype(str).tolist(),
+                        "Kepemilikan":          [
+                            _detect_kep(comp.at[i, "Kepemilikan"])
+                            if "Kepemilikan" in comp.columns else "Lainnya"
+                            for i in range(len(comp))
+                        ],
+                        "Kelas Jalan":          ["Lokal"] * len(comp),
+                        "Lebar Jalan (m)":      [8.0]    * len(comp),
+                        "Kor. Peruntukan (%)":  [0.0]    * len(comp),
+                    })
+                    edited = st.data_editor(
+                        edit_init,
+                        use_container_width=True,
+                        column_config={
+                            "No":                  st.column_config.TextColumn("No", disabled=True, width="small"),
+                            "Kepemilikan":         st.column_config.SelectboxColumn("Kepemilikan", options=_OWN_OPTS, width="medium"),
+                            "Kelas Jalan":         st.column_config.SelectboxColumn("Kelas Jalan", options=_ROAD_OPTS, width="medium"),
+                            "Lebar Jalan (m)":     st.column_config.NumberColumn("Lebar Jln (m)", min_value=1, max_value=60, step=1, width="small"),
+                            "Kor. Peruntukan (%)": st.column_config.NumberColumn("Kor. Peruntukan (%)", format="%.1f%%",
+                                                                                   min_value=-50.0, max_value=50.0, step=0.5, width="medium"),
+                        },
+                        hide_index=True,
+                        key=f"adj_ed_{'_'.join(sorted(str(x) for x in selected))}",
+                    )
+
+                    # ── Compute all adjustments ──────────────────────────────────
+                    subj_kep_rank  = _RANK_KEP.get(subj_kep, 1)
+                    subj_loc_score = _road_total(subj_road_cls, subj_road_w)
+
+                    comp["Kor_Kepemilikan_%"] = edited["Kepemilikan"].apply(
+                        lambda k: (subj_kep_rank - _RANK_KEP.get(str(k), 1)) * 5
+                    )
+                    comp["Kor_Lokasi_%"] = edited.apply(
+                        lambda r: (subj_loc_score - _road_total(r["Kelas Jalan"], r["Lebar Jalan (m)"])) * lokasi_ppt,
+                        axis=1,
+                    )
+                    comp["Kor_Peruntukan_%"] = pd.to_numeric(
+                        edited["Kor. Peruntukan (%)"], errors="coerce"
+                    ).fillna(0.0).values
 
                     comp["Selisih_Tahun"]  = ref_year - comp["Tahun_Bersih"].fillna(ref_year)
                     comp["Kor_Waktu_%"]    = comp["Selisih_Tahun"] * time_adj_pct
-                    comp["Harga_Kor_Waktu"] = comp["Harga_Tanah"] * (1 + comp["Kor_Waktu_%"] / 100)
-
                     if subj_luas > 0:
                         comp["Selisih_Luas"] = comp["Luas_Tanah"].fillna(subj_luas) - subj_luas
                         comp["Kor_Luas_%"]   = -(comp["Selisih_Luas"] / 100) * size_adj_pct
                     else:
                         comp["Kor_Luas_%"]   = 0.0
 
-                    comp["Harga_Final"] = comp["Harga_Kor_Waktu"] * (1 + comp["Kor_Luas_%"] / 100)
+                    comp["Harga_Stl_Diskon"]     = comp["Harga_Tanah"]          * (1 - diskon_pct          / 100)
+                    comp["Harga_Stl_Waktu"]       = comp["Harga_Stl_Diskon"]     * (1 + comp["Kor_Waktu_%"] / 100)
+                    comp["Harga_Stl_Luas"]        = comp["Harga_Stl_Waktu"]      * (1 + comp["Kor_Luas_%"]  / 100)
+                    comp["Harga_Stl_Kepemilikan"] = comp["Harga_Stl_Luas"]       * (1 + comp["Kor_Kepemilikan_%"] / 100)
+                    comp["Harga_Stl_Lokasi"]      = comp["Harga_Stl_Kepemilikan"] * (1 + comp["Kor_Lokasi_%"]     / 100)
+                    comp["Harga_Final"]            = comp["Harga_Stl_Lokasi"]     * (1 + comp["Kor_Peruntukan_%"]  / 100)
 
-                    # Summary table
+                    # ── Summary table ────────────────────────────────────────────
                     tbl = comp[[
                         "Nomor", "Alamat", "Tahun_Bersih", "Luas_Tanah",
-                        "Harga_Tanah", "Kor_Waktu_%", "Harga_Kor_Waktu",
-                        "Kor_Luas_%", "Harga_Final"
+                        "Harga_Tanah",
+                        "Kor_Waktu_%", "Kor_Luas_%",
+                        "Kor_Kepemilikan_%", "Kor_Lokasi_%", "Kor_Peruntukan_%",
+                        "Harga_Final",
                     ]].copy()
                     tbl.columns = [
                         "Nomor", "Alamat", "Tahun", "Luas (m²)",
-                        "Harga Awal", "Kor. Waktu (%)", "Stl Kor. Waktu",
-                        "Kor. Luas (%)", "Harga Final"
+                        "Harga Awal",
+                        "Kor. Waktu (%)", "Kor. Luas (%)",
+                        "Kor. Kepemilikan (%)", "Kor. Lokasi (%)", "Kor. Peruntukan (%)",
+                        "Harga Final",
                     ]
+                    st.markdown("##### 📊 Hasil Koreksi")
                     st.dataframe(
                         tbl,
                         use_container_width=True,
                         column_config={
-                            "Harga Awal":       st.column_config.NumberColumn(format="Rp %.0f"),
-                            "Stl Kor. Waktu":   st.column_config.NumberColumn(format="Rp %.0f"),
-                            "Harga Final":      st.column_config.NumberColumn(format="Rp %.0f"),
-                            "Kor. Waktu (%)":   st.column_config.NumberColumn(format="%.1f %%"),
-                            "Kor. Luas (%)":    st.column_config.NumberColumn(format="%.1f %%"),
-                            "Luas (m²)":        st.column_config.NumberColumn(format="%.0f m²"),
+                            "Harga Awal":           st.column_config.NumberColumn(format="Rp %.0f"),
+                            "Harga Final":          st.column_config.NumberColumn(format="Rp %.0f"),
+                            "Kor. Waktu (%)":       st.column_config.NumberColumn(format="%.1f %%"),
+                            "Kor. Luas (%)":        st.column_config.NumberColumn(format="%.1f %%"),
+                            "Kor. Kepemilikan (%)": st.column_config.NumberColumn(format="%.1f %%"),
+                            "Kor. Lokasi (%)":      st.column_config.NumberColumn(format="%.1f %%"),
+                            "Kor. Peruntukan (%)":  st.column_config.NumberColumn(format="%.1f %%"),
+                            "Luas (m²)":            st.column_config.NumberColumn(format="%.0f m²"),
                         },
                     )
 
-                    # Results
+                    # ── Result metrics ───────────────────────────────────────────
                     harga_indikasi = comp["Harga_Final"].mean()
                     cv = (
                         comp["Harga_Final"].std() / comp["Harga_Final"].mean() * 100
@@ -1486,10 +1589,10 @@ with tab_analisa:
                     )
 
                     st.divider()
-                    r1, r2, r3 = st.columns(3)
-                    r1.metric("💰 Harga Indikasi",       format_currency(harga_indikasi) + "/m²")
-                    r2.metric("📊 Koefisien Variasi (CV)", f"{cv:.1f}%")
-                    r3.metric("📈 Jumlah Pembanding",     len(comp))
+                    mc1, mc2, mc3 = st.columns(3)
+                    mc1.metric("💰 Harga Indikasi",         format_currency(harga_indikasi) + "/m²")
+                    mc2.metric("📊 Koefisien Variasi (CV)", f"{cv:.1f}%")
+                    mc3.metric("📈 Jumlah Pembanding",      len(comp))
 
                     if cv <= 20:
                         st.success(f"✅ CV = {cv:.1f}% ≤ 20% → Homogen. Hasil dapat diandalkan.")
@@ -1498,16 +1601,14 @@ with tab_analisa:
                     else:
                         st.error(f"❌ CV = {cv:.1f}% > 30% → Sangat beragam. Ganti/perbaiki data pembanding.")
 
-                    # Bar chart comparison
+                    # ── Bar chart ────────────────────────────────────────────────
                     fig = go.Figure()
-                    fig.add_trace(go.Bar(
-                        x=comp["Nomor"].astype(str), y=comp["Harga_Tanah"],
-                        name="Harga Awal", marker_color="#a8d8ea",
-                    ))
-                    fig.add_trace(go.Bar(
-                        x=comp["Nomor"].astype(str), y=comp["Harga_Final"],
-                        name="Harga Setelah Koreksi", marker_color="#667eea",
-                    ))
+                    fig.add_trace(go.Bar(x=comp["Nomor"].astype(str), y=comp["Harga_Tanah"],
+                                         name="Harga Awal", marker_color="#a8d8ea"))
+                    fig.add_trace(go.Bar(x=comp["Nomor"].astype(str), y=comp["Harga_Stl_Diskon"],
+                                         name="Stl. Diskon", marker_color="#f9c74f"))
+                    fig.add_trace(go.Bar(x=comp["Nomor"].astype(str), y=comp["Harga_Final"],
+                                         name="Harga Final", marker_color="#667eea"))
                     if subj_harga > 0:
                         fig.add_hline(y=subj_harga, line_dash="dash", line_color="red",
                                       annotation_text=f"Harga Obyek: {format_currency(subj_harga)}")
@@ -1522,7 +1623,7 @@ with tab_analisa:
                     )
                     st.plotly_chart(fig, use_container_width=True)
 
-                    # Download comparison result
+                    # ── Download ─────────────────────────────────────────────────
                     st.download_button(
                         label="📥 Download Hasil Perbandingan",
                         data=to_excel_bytes(tbl),
