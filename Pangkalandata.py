@@ -1239,17 +1239,6 @@ with tab_peta:
                                 "Tgl Inspeksi",  safe_get(row,"Tanggal_Inspeksi")))
                     P.append(r2("Reviewer",       safe_get(row,"Reviewer"),
                                 "Pemberi Tugas",  safe_get(row,"Pemberi_Tugas")))
-                    # Data Bangunan dari sheet terpisah
-                    kode_ins = safe_get(row, "Kode_Inspeksi")
-                    if not df_bangunan.empty and kode_ins and kode_ins != "—" and "Kode_Inspeksi" in df_bangunan.columns:
-                        bgn_rows = df_bangunan[df_bangunan["Kode_Inspeksi"] == kode_ins]
-                        if not bgn_rows.empty:
-                            P.append(sh("🏗️", "Bangunan"))
-                            for _, br in bgn_rows.iterrows():
-                                jenis_bgn = str(br.get("Jenis_Bangunan", "")) if pd.notna(br.get("Jenis_Bangunan")) else "—"
-                                luas_bgn  = br.get("Luas_Bangunan")
-                                luas_bgn_fmt = f"{luas_bgn:,.0f} m²" if pd.notna(luas_bgn) else "—"
-                                P.append(r2("Jenis Bangunan", jenis_bgn, "Luas Bangunan", luas_bgn_fmt))
                 else:
                     P.append(sh("📋", "Properti"))
                     thn_v = int(tahun_d) if tahun_d and not pd.isna(tahun_d) else "—"
@@ -1266,6 +1255,16 @@ with tab_peta:
                 P.append(sh("📐", "Fisik"))
                 P.append(r2("Luas Tanah",    _luas("Luas_Tanah"),
                              "Luas Bangunan", _luas("Luas_Bangunan")))
+                if is_s:
+                    # Jenis & Luas Bangunan dari sheet Data Bangunan
+                    kode_ins = safe_get(row, "Kode_Inspeksi")
+                    if not df_bangunan.empty and kode_ins and kode_ins != "—" and "Kode_Inspeksi" in df_bangunan.columns:
+                        bgn_rows = df_bangunan[df_bangunan["Kode_Inspeksi"] == kode_ins]
+                        for _, br in bgn_rows.iterrows():
+                            jenis_bgn = str(br.get("Jenis_Bangunan", "")) if pd.notna(br.get("Jenis_Bangunan")) else "—"
+                            luas_bgn  = br.get("Luas_Bangunan")
+                            luas_bgn_fmt = f"{luas_bgn:,.0f} m²" if pd.notna(luas_bgn) else "—"
+                            P.append(r2("Jenis Bangunan", jenis_bgn, "Luas Bgn (DB)", luas_bgn_fmt))
                 if not is_s:
                     P.append(r2("Kondisi Bgn", safe_get(row,"Kondisi_Bangunan"),
                                 "Kelas Bgn",   safe_get(row,"Kelas_Bangunan")))
