@@ -505,7 +505,7 @@ else:
     filtered["_outlier"] = False
 
 city_label = city_input.strip() or "Semua Kota"
-st.markdown(f"### Hasil Filter: **{len(filtered)} data** — Kota: *{city_label}* | Tahun: *{selected_year}*")
+st.markdown(f"<p style='font-size:13px;color:#555;margin:0 0 6px'>Hasil Filter: <b>{len(filtered)} data</b> — Kota: <i>{city_label}</i> | Tahun: <i>{selected_year}</i></p>", unsafe_allow_html=True)
 
 # ─── Tabs ─────────────────────────────────────────────────────────────────────
 tab_dashboard, tab_peta, tab_tabel, tab_analisa = st.tabs([
@@ -664,7 +664,6 @@ with tab_peta:
             prefer_canvas=True, control_scale=True,
         )
 
-        folium.TileLayer("OpenStreetMap", name="OpenStreetMap").add_to(m)
         folium.TileLayer(
             tiles="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
             name="Voyager", attr="©OpenStreetMap ©CartoDB",
@@ -1011,7 +1010,7 @@ with tab_peta:
                     ),
                 ).add_to(m)
 
-        folium.LayerControl(collapsed=False).add_to(m)
+        folium.LayerControl(collapsed=True).add_to(m)
 
         legend = """
         <div class="legend-box">
@@ -1104,64 +1103,82 @@ with tab_peta:
                         f'<span style="color:#bbb;font-size:10px;margin-left:auto">'
                         f'{thn_lbl}</span></div>')
 
-                # Foto utama
-                if lh3_url:
-                    P.append(
-                        f'<img src="{lh3_url}" '
-                        f'style="width:100%;height:auto;border-radius:5px;'
-                        f'border:1px solid #e8e8e8;margin-bottom:3px;display:block" '
-                        f'referrerpolicy="no-referrer" '
-                        f'onerror="this.src=\'{thumb_url}\';this.onerror=null;">')
-
-                # Galeri foto ekstra (Obyek Penilaian) — HTML grid, bukan st.columns
+                # Kumpulkan semua foto untuk slideshow
+                all_fotos = []
+                if foto_url not in ("", "#", "-", "nan", "None"):
+                    lh, th = gdrive_thumbnail(foto_url, width=600)
+                    if lh: all_fotos.append((lh, th, foto_url, "Depan"))
+                fj_url = str(safe_get(row, "Foto_Jalan", ""))
+                if fj_url not in ("", "#", "-", "nan", "None"):
+                    lh, th = gdrive_thumbnail(fj_url, width=600)
+                    if lh: all_fotos.append((lh, th, fj_url, "Jalan"))
                 if is_s:
-                    foto_extra = [
-                        (safe_get(row, "Foto_Dalam",         ""), "Dalam"),
-                        (safe_get(row, "Foto_Samping_Kanan", ""), "Kanan"),
-                        (safe_get(row, "Foto_Samping_Kiri",  ""), "Kiri"),
-                        (safe_get(row, "Gambar_Situasi",     ""), "Situasi"),
-                    ]
-                    valid_extra = [(u, lb) for u, lb in foto_extra
-                                   if u not in ("", "#", "-", "nan", "None")]
-                    if valid_extra:
-                        cols_fr = " ".join(["1fr"] * len(valid_extra))
-                        P.append(f'<div style="display:grid;grid-template-columns:{cols_fr};'
-                                 f'gap:3px;margin-bottom:3px">')
-                        for u, lb in valid_extra:
-                            l3, th = gdrive_thumbnail(u, width=200)
-                            if l3:
-                                P.append(
-                                    f'<div style="text-align:center">'
-                                    f'<img src="{l3}" style="width:100%;height:auto;'
-                                    f'border-radius:3px;border:1px solid #ddd" '
-                                    f'referrerpolicy="no-referrer" '
-                                    f'onerror="this.src=\'{th}\';this.onerror=null;">'
-                                    f'<div style="font-size:9px;color:#999;margin-top:1px">'
-                                    f'{lb}</div></div>')
-                        P.append('</div>')
+                    for col, lb in [("Foto_Dalam","Dalam"),("Foto_Samping_Kanan","Kanan"),
+                                    ("Foto_Samping_Kiri","Kiri"),("Gambar_Situasi","Situasi")]:
+                        u = str(safe_get(row, col, ""))
+                        if u not in ("", "#", "-", "nan", "None"):
+                            lh, th = gdrive_thumbnail(u, width=600)
+                            if lh: all_fotos.append((lh, th, u, lb))
 
-                # Link bar
+                # Slideshow carousel (JavaScript)
+                if all_fotos:
+                    cid = f"c{abs(hash(nomor_d)) % 99999}"
+                    slides_js = "[" + ",".join(
+                        f'{{src:"{lh}",fb:"{th}",href:"{hr}",lbl:"{lb}"}}'
+                        for lh, th, hr, lb in all_fotos
+                    ) + "]"
+                    P.append(f"""
+<div style="position:relative;margin-bottom:4px;background:#000;border-radius:5px;overflow:hidden">
+  <img id="si_{cid}" src="{all_fotos[0][0]}"
+       style="width:100%;height:auto;display:block;border-radius:5px"
+       referrerpolicy="no-referrer"
+       onerror="this.src='{all_fotos[0][1]}';this.onerror=null;">
+  <div style="position:absolute;bottom:0;left:0;right:0;
+              background:linear-gradient(transparent,rgba(0,0,0,0.55));
+              padding:4px 8px;display:flex;align-items:center;gap:6px">
+    <button onclick="sd_{cid}(-1)"
+            style="background:rgba(255,255,255,0.25);border:none;color:white;
+                   font-size:16px;line-height:1;padding:1px 6px;border-radius:3px;cursor:pointer">&#8249;</button>
+    <span id="lb_{cid}" style="color:white;font-size:10px;font-weight:600;flex:1;text-align:center">
+      Depan &nbsp;1/{len(all_fotos)}</span>
+    <button onclick="sd_{cid}(1)"
+            style="background:rgba(255,255,255,0.25);border:none;color:white;
+                   font-size:16px;line-height:1;padding:1px 6px;border-radius:3px;cursor:pointer">&#8250;</button>
+    <a id="ln_{cid}" href="{all_fotos[0][2]}" target="_blank"
+       style="color:rgba(255,255,255,0.8);font-size:9px;text-decoration:none;white-space:nowrap">
+      &#8599; buka</a>
+  </div>
+</div>
+<script>
+(function(){{
+  var D_{cid}={slides_js}, I_{cid}=0;
+  function show_{cid}(i){{
+    I_{cid}=(i+D_{cid}.length)%D_{cid}.length;
+    var d=D_{cid}[I_{cid}];
+    var el=document.getElementById('si_{cid}');
+    el.src=d.src; el.onerror=function(){{el.src=d.fb;el.onerror=null;}};
+    document.getElementById('lb_{cid}').innerHTML=d.lbl+'&nbsp;'+(I_{cid}+1)+'/{len(all_fotos)}';
+    document.getElementById('ln_{cid}').href=d.href;
+  }}
+  window.sd_{cid}=function(n){{show_{cid}(I_{cid}+n);}};
+}})();
+</script>""")
+
+                # Link bar (Street View saja, foto sudah ada di slideshow)
                 links = []
-                if lh3_url and foto_url not in ("", "#", "-", "nan", "None"):
-                    links.append(
-                        f'<a href="{foto_url}" target="_blank" '
-                        f'style="color:#2980b9;text-decoration:none;font-size:10px">'
-                        f'📷 Foto Depan ↗</a>')
-                fj = str(safe_get(row, "Foto_Jalan", ""))
-                if fj not in ("", "#", "-", "nan", "None"):
-                    links.append(
-                        f'<a href="{fj}" target="_blank" '
-                        f'style="color:#2980b9;text-decoration:none;font-size:10px">'
-                        f'📷 Foto Jalan ↗</a>')
+
                 sv = generate_streetview_url(row.get("Latitude"), row.get("Longitude"))
-                links.append(
+                P.append(
+                    f'<div style="display:flex;gap:8px;margin:2px 0 4px;flex-wrap:wrap;'
+                    f'border-bottom:1px solid #efefef;padding-bottom:3px">'
                     f'<a href="{sv}" target="_blank" '
                     f'style="color:#2980b9;text-decoration:none;font-size:10px">'
-                    f'🔍 Street View ↗</a>')
-                P.append(
-                    '<div style="display:flex;gap:8px;margin:2px 0 4px;flex-wrap:wrap;'
-                    'border-bottom:1px solid #efefef;padding-bottom:3px">'
-                    + " ".join(links) + '</div>')
+                    f'🔍 Street View ↗</a>'
+                    + (f'<span style="color:#ccc;font-size:10px">|</span>'
+                       f'<span style="color:#999;font-size:9px">'
+                       f'{len(all_fotos)} foto — geser ‹ ›</span>'
+                       if all_fotos else "")
+                    + '</div>')
 
                 # Harga card (Data Pembanding)
                 if not is_s:
