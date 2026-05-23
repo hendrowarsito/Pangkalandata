@@ -1,5 +1,6 @@
 import pandas as pd
 import streamlit as st
+import streamlit.components.v1 as components
 import folium
 from folium.plugins import MarkerCluster, HeatMap
 from streamlit_folium import st_folium
@@ -1055,7 +1056,7 @@ with tab_peta:
         with col_detail:
             sel_idx = st.session_state.get("peta_sel")
             if sel_idx is None or sel_idx not in map_df.index:
-                st.markdown(
+                components.html(
                     '<div style="height:620px;display:flex;align-items:center;'
                     'justify-content:center;border:2px dashed #e8e8e8;border-radius:8px;'
                     'font-family:-apple-system,sans-serif;color:#ccc">'
@@ -1064,7 +1065,7 @@ with tab_peta:
                     '<div style="font-size:11px;margin-top:8px;line-height:1.6">'
                     'Klik marker di peta<br>untuk detail properti</div>'
                     '</div></div>',
-                    unsafe_allow_html=True)
+                    height=625)
             else:
                 row      = map_df.loc[sel_idx]
                 nomor_d  = str(safe_get(row, "Nomor")).strip()
@@ -1072,205 +1073,183 @@ with tab_peta:
                 tahun_d  = row.get("Tahun_Bersih") if hasattr(row, "get") else None
                 harga_d  = format_currency(row.get("Harga_Tanah"))
                 foto_url = str(safe_get(row, "Foto", ""))
-                lh3_url, thumb_url = gdrive_thumbnail(foto_url, width=500)
 
-                # Semua konten dalam 1 blok HTML → height 620px sama dg peta
+                # ── Kumpulkan semua foto ──────────────────────────────────
+                all_fotos = []
+                for u_raw, lb in (
+                    [(foto_url, "Depan"),
+                     (str(safe_get(row, "Foto_Jalan", "")), "Jalan")]
+                    + ([(str(safe_get(row, c, "")), lb2)
+                        for c, lb2 in [("Foto_Dalam","Dalam"),
+                                       ("Foto_Samping_Kanan","Kanan"),
+                                       ("Foto_Samping_Kiri","Kiri"),
+                                       ("Gambar_Situasi","Situasi")]]
+                       if is_s else [])
+                ):
+                    if u_raw not in ("", "#", "-", "nan", "None"):
+                        lh, th = gdrive_thumbnail(u_raw, width=600)
+                        if lh:
+                            all_fotos.append((lh, th, u_raw, lb))
+
+                # ── Helper builders ───────────────────────────────────────
+                def _v(x):
+                    s = str(x) if x is not None else ""
+                    return s if s not in ("-", "", "None", "nan") else "—"
+                def sh(icon, title):
+                    return (f'<div style="background:#f0faf5;color:#1a7a4a;font-size:8.5px;'
+                            f'font-weight:700;text-transform:uppercase;letter-spacing:.5px;'
+                            f'padding:2px 5px;border-radius:2px;margin:5px 0 1px">'
+                            f'{icon} {title}</div>')
+                def r1(lbl, val):
+                    return (f'<div style="display:flex;border-bottom:1px solid #f5f5f5;padding:1.5px 0">'
+                            f'<span style="color:#bbb;font-size:9.5px;min-width:82px;flex-shrink:0">{lbl}</span>'
+                            f'<span style="color:#1a1a1a;font-size:10.5px;font-weight:500">{_v(val)}</span></div>')
+                def r2(l1, v1, l2, v2):
+                    return (f'<div style="display:grid;grid-template-columns:1fr 1fr;'
+                            f'gap:0 3px;border-bottom:1px solid #f5f5f5;padding:1.5px 0">'
+                            f'<div><span style="display:block;color:#bbb;font-size:9px">{l1}</span>'
+                            f'<span style="color:#1a1a1a;font-size:10.5px;font-weight:500">{_v(v1)}</span></div>'
+                            f'<div><span style="display:block;color:#bbb;font-size:9px">{l2}</span>'
+                            f'<span style="color:#1a1a1a;font-size:10.5px;font-weight:500">{_v(v2)}</span></div></div>')
+                def _luas(col):
+                    v = row.get(col)
+                    if v is None or (isinstance(v, float) and pd.isna(v)): return "—"
+                    try: return f"{float(v):,.0f} m²".replace(",", ".")
+                    except: return str(v)
+
+                # ── Build HTML ────────────────────────────────────────────
                 P = []
-                P.append(
-                    '<div style="height:620px;overflow-y:auto;padding:0 5px 8px 0;'
-                    'font-family:-apple-system,\'Segoe UI\',sans-serif;'
-                    'scrollbar-width:thin;scrollbar-color:#ddd transparent">')
+                P.append('<div style="height:620px;overflow-y:auto;padding:0 5px 8px 0;'
+                         'font-family:-apple-system,\'Segoe UI\',sans-serif;'
+                         'scrollbar-width:thin;scrollbar-color:#ddd transparent">')
 
                 # Header
                 if is_s:
-                    P.append(
-                        '<div style="background:#fdecea;border-left:3px solid #c0392b;'
-                        'padding:4px 8px;margin-bottom:4px;border-radius:0 4px 4px 0">'
-                        '<b style="color:#c0392b;font-size:12px">🏠 Obyek Penilaian</b>'
-                        '</div>')
+                    P.append('<div style="background:#fdecea;border-left:3px solid #c0392b;'
+                             'padding:4px 8px;margin-bottom:4px;border-radius:0 4px 4px 0">'
+                             '<b style="color:#c0392b;font-size:12px">🏠 Obyek Penilaian</b></div>')
                 else:
                     jenis_d = safe_get(row, "Jenis_Data")
                     badge   = "#e67e22" if "penawaran" in str(jenis_d).lower() else "#2980b9"
-                    thn_lbl = (f"· {int(tahun_d)}"
-                               if tahun_d and not pd.isna(tahun_d) else "")
-                    P.append(
-                        f'<div style="background:#eafaf1;border-left:3px solid #27ae60;'
-                        f'padding:4px 8px;margin-bottom:4px;border-radius:0 4px 4px 0;'
-                        f'display:flex;align-items:center;gap:5px">'
-                        f'<b style="color:#1a7a4a;font-size:12px">Data {nomor_d}</b>'
-                        f'<span style="background:{badge};color:white;border-radius:6px;'
-                        f'padding:1px 5px;font-size:9px">{jenis_d}</span>'
-                        f'<span style="color:#bbb;font-size:10px;margin-left:auto">'
-                        f'{thn_lbl}</span></div>')
+                    thn_lbl = f"· {int(tahun_d)}" if tahun_d and not pd.isna(tahun_d) else ""
+                    P.append(f'<div style="background:#eafaf1;border-left:3px solid #27ae60;'
+                             f'padding:4px 8px;margin-bottom:4px;border-radius:0 4px 4px 0;'
+                             f'display:flex;align-items:center;gap:5px">'
+                             f'<b style="color:#1a7a4a;font-size:12px">Data {nomor_d}</b>'
+                             f'<span style="background:{badge};color:white;border-radius:6px;'
+                             f'padding:1px 5px;font-size:9px">{jenis_d}</span>'
+                             f'<span style="color:#bbb;font-size:10px;margin-left:auto">{thn_lbl}</span></div>')
 
-                # Kumpulkan semua foto untuk slideshow
-                all_fotos = []
-                if foto_url not in ("", "#", "-", "nan", "None"):
-                    lh, th = gdrive_thumbnail(foto_url, width=600)
-                    if lh: all_fotos.append((lh, th, foto_url, "Depan"))
-                fj_url = str(safe_get(row, "Foto_Jalan", ""))
-                if fj_url not in ("", "#", "-", "nan", "None"):
-                    lh, th = gdrive_thumbnail(fj_url, width=600)
-                    if lh: all_fotos.append((lh, th, fj_url, "Jalan"))
-                if is_s:
-                    for col, lb in [("Foto_Dalam","Dalam"),("Foto_Samping_Kanan","Kanan"),
-                                    ("Foto_Samping_Kiri","Kiri"),("Gambar_Situasi","Situasi")]:
-                        u = str(safe_get(row, col, ""))
-                        if u not in ("", "#", "-", "nan", "None"):
-                            lh, th = gdrive_thumbnail(u, width=600)
-                            if lh: all_fotos.append((lh, th, u, lb))
-
-                # Slideshow carousel (JavaScript)
+                # Carousel foto — menggunakan JavaScript (berjalan di components.html iframe)
                 if all_fotos:
-                    cid = f"c{abs(hash(nomor_d)) % 99999}"
-                    slides_js = "[" + ",".join(
-                        f'{{src:"{lh}",fb:"{th}",href:"{hr}",lbl:"{lb}"}}'
-                        for lh, th, hr, lb in all_fotos
-                    ) + "]"
-                    P.append(f"""
-<div style="position:relative;margin-bottom:4px;background:#000;border-radius:5px;overflow:hidden">
-  <img id="si_{cid}" src="{all_fotos[0][0]}"
-       style="width:100%;height:auto;display:block;border-radius:5px"
+                    n_foto  = len(all_fotos)
+                    slides  = ",".join(
+                        f'{{s:"{lh}",f:"{th}",h:"{hr}",l:"{lb}"}}'
+                        for lh, th, hr, lb in all_fotos)
+                    P.append(f'''
+<div style="position:relative;margin-bottom:4px;border-radius:5px;overflow:hidden;background:#111">
+  <img id="simg" src="{all_fotos[0][0]}"
+       style="width:100%;height:auto;display:block"
        referrerpolicy="no-referrer"
        onerror="this.src='{all_fotos[0][1]}';this.onerror=null;">
   <div style="position:absolute;bottom:0;left:0;right:0;
-              background:linear-gradient(transparent,rgba(0,0,0,0.55));
-              padding:4px 8px;display:flex;align-items:center;gap:6px">
-    <button onclick="sd_{cid}(-1)"
-            style="background:rgba(255,255,255,0.25);border:none;color:white;
-                   font-size:16px;line-height:1;padding:1px 6px;border-radius:3px;cursor:pointer">&#8249;</button>
-    <span id="lb_{cid}" style="color:white;font-size:10px;font-weight:600;flex:1;text-align:center">
-      Depan &nbsp;1/{len(all_fotos)}</span>
-    <button onclick="sd_{cid}(1)"
-            style="background:rgba(255,255,255,0.25);border:none;color:white;
-                   font-size:16px;line-height:1;padding:1px 6px;border-radius:3px;cursor:pointer">&#8250;</button>
-    <a id="ln_{cid}" href="{all_fotos[0][2]}" target="_blank"
-       style="color:rgba(255,255,255,0.8);font-size:9px;text-decoration:none;white-space:nowrap">
-      &#8599; buka</a>
+              background:linear-gradient(transparent,rgba(0,0,0,0.6));
+              padding:5px 8px;display:flex;align-items:center;gap:6px">
+    <button id="btnP"
+            style="background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.4);
+                   color:white;font-size:18px;line-height:1;width:28px;height:28px;
+                   border-radius:4px;cursor:pointer;flex-shrink:0">&#8249;</button>
+    <span id="slbl" style="color:white;font-size:10px;font-weight:600;
+                           flex:1;text-align:center">Depan 1/{n_foto}</span>
+    <button id="btnN"
+            style="background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.4);
+                   color:white;font-size:18px;line-height:1;width:28px;height:28px;
+                   border-radius:4px;cursor:pointer;flex-shrink:0">&#8250;</button>
+    <a id="slnk" href="{all_fotos[0][2]}" target="_blank"
+       style="color:rgba(255,255,255,0.8);font-size:9px;
+              text-decoration:none;white-space:nowrap;flex-shrink:0">↗ buka</a>
   </div>
 </div>
 <script>
 (function(){{
-  var D_{cid}={slides_js}, I_{cid}=0;
-  function show_{cid}(i){{
-    I_{cid}=(i+D_{cid}.length)%D_{cid}.length;
-    var d=D_{cid}[I_{cid}];
-    var el=document.getElementById('si_{cid}');
-    el.src=d.src; el.onerror=function(){{el.src=d.fb;el.onerror=null;}};
-    document.getElementById('lb_{cid}').innerHTML=d.lbl+'&nbsp;'+(I_{cid}+1)+'/{len(all_fotos)}';
-    document.getElementById('ln_{cid}').href=d.href;
+  var D=[{slides}], i=0;
+  function go(n){{
+    i=(n+D.length)%D.length;
+    var el=document.getElementById('simg');
+    el.src=D[i].s;
+    el.onerror=function(){{el.src=D[i].f;el.onerror=null;}};
+    document.getElementById('slbl').textContent=D[i].l+' '+(i+1)+'/{n_foto}';
+    document.getElementById('slnk').href=D[i].h;
   }}
-  window.sd_{cid}=function(n){{show_{cid}(I_{cid}+n);}};
+  document.getElementById('btnP').addEventListener('click',function(){{go(i-1);}});
+  document.getElementById('btnN').addEventListener('click',function(){{go(i+1);}});
 }})();
-</script>""")
+</script>''')
 
-                # Link bar (Street View saja, foto sudah ada di slideshow)
-                links = []
-
+                # Link Street View
                 sv = generate_streetview_url(row.get("Latitude"), row.get("Longitude"))
-                P.append(
-                    f'<div style="display:flex;gap:8px;margin:2px 0 4px;flex-wrap:wrap;'
-                    f'border-bottom:1px solid #efefef;padding-bottom:3px">'
-                    f'<a href="{sv}" target="_blank" '
-                    f'style="color:#2980b9;text-decoration:none;font-size:10px">'
-                    f'🔍 Street View ↗</a>'
-                    + (f'<span style="color:#ccc;font-size:10px">|</span>'
-                       f'<span style="color:#999;font-size:9px">'
-                       f'{len(all_fotos)} foto — geser ‹ ›</span>'
-                       if all_fotos else "")
-                    + '</div>')
+                foto_hint = f' | {len(all_fotos)} foto — geser ‹ ›' if all_fotos else ''
+                P.append(f'<div style="display:flex;gap:8px;margin:2px 0 4px;flex-wrap:wrap;'
+                         f'border-bottom:1px solid #efefef;padding-bottom:3px">'
+                         f'<a href="{sv}" target="_blank" '
+                         f'style="color:#2980b9;text-decoration:none;font-size:10px">'
+                         f'🔍 Street View ↗</a>'
+                         f'<span style="color:#bbb;font-size:9px">{foto_hint}</span></div>')
 
                 # Harga card (Data Pembanding)
                 if not is_s:
                     ht     = row.get("Harga_Total")
                     ht_str = format_currency(ht) if ht and not pd.isna(ht) else "—"
-                    P.append(
-                        f'<div style="display:flex;gap:4px;margin:3px 0">'
-                        f'<div style="flex:1;background:#f0fdf4;border-left:2px solid #27ae60;'
-                        f'padding:3px 6px;border-radius:0 3px 3px 0">'
-                        f'<div style="font-size:8px;color:#999;text-transform:uppercase;'
-                        f'letter-spacing:.4px">Harga Total</div>'
-                        f'<div style="font-size:11px;font-weight:700;color:#1a7a4a">'
-                        f'{ht_str}</div></div>'
-                        f'<div style="flex:1;background:#eff6ff;border-left:2px solid #2980b9;'
-                        f'padding:3px 6px;border-radius:0 3px 3px 0">'
-                        f'<div style="font-size:8px;color:#999;text-transform:uppercase;'
-                        f'letter-spacing:.4px">Harga/m²</div>'
-                        f'<div style="font-size:11px;font-weight:700;color:#1a4a7a">'
-                        f'{harga_d}</div></div></div>')
+                    P.append(f'<div style="display:flex;gap:4px;margin:3px 0">'
+                             f'<div style="flex:1;background:#f0fdf4;border-left:2px solid #27ae60;'
+                             f'padding:3px 6px;border-radius:0 3px 3px 0">'
+                             f'<div style="font-size:8px;color:#999;text-transform:uppercase;'
+                             f'letter-spacing:.4px">Harga Total</div>'
+                             f'<div style="font-size:11px;font-weight:700;color:#1a7a4a">{ht_str}</div></div>'
+                             f'<div style="flex:1;background:#eff6ff;border-left:2px solid #2980b9;'
+                             f'padding:3px 6px;border-radius:0 3px 3px 0">'
+                             f'<div style="font-size:8px;color:#999;text-transform:uppercase;'
+                             f'letter-spacing:.4px">Harga/m²</div>'
+                             f'<div style="font-size:11px;font-weight:700;color:#1a4a7a">{harga_d}</div></div></div>')
 
-                # Info helpers — semua inline, tanpa st.columns
-                def _v(x):
-                    s = str(x) if x is not None else ""
-                    return s if s not in ("-", "", "None", "nan") else "—"
-                def sh(icon, title):
-                    return (
-                        f'<div style="background:#f0faf5;color:#1a7a4a;font-size:8.5px;'
-                        f'font-weight:700;text-transform:uppercase;letter-spacing:.5px;'
-                        f'padding:2px 5px;border-radius:2px;margin:5px 0 1px">'
-                        f'{icon} {title}</div>')
-                def r1(lbl, val):
-                    return (
-                        f'<div style="display:flex;border-bottom:1px solid #f5f5f5;'
-                        f'padding:1.5px 0">'
-                        f'<span style="color:#bbb;font-size:9.5px;min-width:82px;'
-                        f'flex-shrink:0">{lbl}</span>'
-                        f'<span style="color:#1a1a1a;font-size:10.5px;font-weight:500">'
-                        f'{_v(val)}</span></div>')
-                def r2(l1, v1, l2, v2):
-                    return (
-                        f'<div style="display:grid;grid-template-columns:1fr 1fr;'
-                        f'gap:0 3px;border-bottom:1px solid #f5f5f5;padding:1.5px 0">'
-                        f'<div><span style="display:block;color:#bbb;font-size:9px">{l1}</span>'
-                        f'<span style="color:#1a1a1a;font-size:10.5px;font-weight:500">'
-                        f'{_v(v1)}</span></div>'
-                        f'<div><span style="display:block;color:#bbb;font-size:9px">{l2}</span>'
-                        f'<span style="color:#1a1a1a;font-size:10.5px;font-weight:500">'
-                        f'{_v(v2)}</span></div></div>')
-                def _luas(col):
-                    v = row.get(col)
-                    if v is None or (isinstance(v, float) and pd.isna(v)):
-                        return "—"
-                    try:
-                        return f"{float(v):,.0f} m²".replace(",", ".")
-                    except Exception:
-                        return str(v)
-
+                # Info sections
                 if is_s:
                     P.append(sh("📋", "Identitas"))
-                    P.append(r2("Pemilik",       safe_get(row, "Pemilik"),
-                                "Jenis",          safe_get(row, "Jenis_Properti")))
-                    P.append(r2("Kode Inspeksi", safe_get(row, "Kode_Inspeksi"),
-                                "Reviewer",       safe_get(row, "Reviewer")))
-                    P.append(r1("Pemberi Tugas", safe_get(row, "Pemberi_Tugas")))
+                    P.append(r2("Pemilik", safe_get(row,"Pemilik"),
+                                "Jenis",   safe_get(row,"Jenis_Properti")))
+                    P.append(r2("Kode Inspeksi", safe_get(row,"Kode_Inspeksi"),
+                                "Reviewer",      safe_get(row,"Reviewer")))
+                    P.append(r1("Pemberi Tugas", safe_get(row,"Pemberi_Tugas")))
                 else:
                     P.append(sh("📋", "Properti"))
                     thn_v = int(tahun_d) if tahun_d and not pd.isna(tahun_d) else "—"
-                    P.append(r2("Jenis", safe_get(row, "Jenis_Properti"), "Tahun", thn_v))
+                    P.append(r2("Jenis", safe_get(row,"Jenis_Properti"), "Tahun", thn_v))
 
                 P.append(sh("📍", "Lokasi"))
-                P.append(r1("Alamat",    safe_get(row, "Alamat")))
-                P.append(r1("Kompleks",  safe_get(row, "Kompleks")))
-                P.append(r2("Kelurahan", safe_get(row, "Kelurahan"),
-                             "Kecamatan", safe_get(row, "Kecamatan")))
-                P.append(r2("Kota",      safe_get(row, "Kota"),
-                             "Propinsi",  safe_get(row, "Propinsi")))
+                P.append(r1("Alamat",    safe_get(row,"Alamat")))
+                P.append(r1("Kompleks",  safe_get(row,"Kompleks")))
+                P.append(r2("Kelurahan", safe_get(row,"Kelurahan"),
+                             "Kecamatan", safe_get(row,"Kecamatan")))
+                P.append(r2("Kota",     safe_get(row,"Kota"),
+                             "Propinsi", safe_get(row,"Propinsi")))
 
                 P.append(sh("📐", "Fisik"))
                 P.append(r2("Luas Tanah",    _luas("Luas_Tanah"),
                              "Luas Bangunan", _luas("Luas_Bangunan")))
                 if not is_s:
-                    P.append(r2("Kondisi Bgn", safe_get(row, "Kondisi_Bangunan"),
-                                "Kelas Bgn",   safe_get(row, "Kelas_Bangunan")))
-                P.append(r2("Peruntukan",  safe_get(row, "Peruntukan"),
-                             "Kepemilikan", safe_get(row, "Kepemilikan")))
+                    P.append(r2("Kondisi Bgn", safe_get(row,"Kondisi_Bangunan"),
+                                "Kelas Bgn",   safe_get(row,"Kelas_Bangunan")))
+                P.append(r2("Peruntukan",  safe_get(row,"Peruntukan"),
+                             "Kepemilikan", safe_get(row,"Kepemilikan")))
                 if not is_s:
                     P.append(sh("📞", "Kontak"))
-                    P.append(r2("Nama", safe_get(row, "Kontak"),
-                                "Telp", safe_get(row, "Telp")))
+                    P.append(r2("Nama", safe_get(row,"Kontak"),
+                                "Telp", safe_get(row,"Telp")))
 
                 P.append('</div>')  # tutup scrollable container
-                st.markdown("".join(P), unsafe_allow_html=True)
+
+                # Render via components.html agar JavaScript carousel berjalan
+                components.html("".join(P), height=625, scrolling=False)
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # TAB 3 — TABEL DATA
