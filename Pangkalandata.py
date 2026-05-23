@@ -1253,18 +1253,29 @@ with tab_peta:
                              "Propinsi", safe_get(row,"Propinsi")))
 
                 P.append(sh("📐", "Fisik"))
-                P.append(r2("Luas Tanah",    _luas("Luas_Tanah"),
-                             "Luas Bangunan", _luas("Luas_Bangunan")))
                 if is_s:
-                    # Jenis & Luas Bangunan dari sheet Data Bangunan
+                    # Tentukan apakah ada data bangunan dari sheet terpisah
                     kode_ins = safe_get(row, "Kode_Inspeksi")
-                    if not df_bangunan.empty and kode_ins and kode_ins != "—" and "Kode_Inspeksi" in df_bangunan.columns:
-                        bgn_rows = df_bangunan[df_bangunan["Kode_Inspeksi"] == kode_ins]
+                    bgn_rows = (
+                        df_bangunan[df_bangunan["Kode_Inspeksi"] == kode_ins]
+                        if not df_bangunan.empty and kode_ins and kode_ins != "—"
+                           and "Kode_Inspeksi" in df_bangunan.columns
+                        else pd.DataFrame()
+                    )
+                    if not bgn_rows.empty:
+                        # Ada data dari Data Bangunan — tampilkan Luas Tanah saja di baris pertama
+                        P.append(r1("Luas Tanah", _luas("Luas_Tanah")))
                         for _, br in bgn_rows.iterrows():
                             jenis_bgn = str(br.get("Jenis_Bangunan", "")) if pd.notna(br.get("Jenis_Bangunan")) else "—"
                             luas_bgn  = br.get("Luas_Bangunan")
                             luas_bgn_fmt = f"{luas_bgn:,.0f} m²" if pd.notna(luas_bgn) else "—"
-                            P.append(r2("Jenis Bangunan", jenis_bgn, "Luas Bgn (DB)", luas_bgn_fmt))
+                            P.append(r2("Jenis Bangunan", jenis_bgn, "Luas Bangunan", luas_bgn_fmt))
+                    else:
+                        P.append(r2("Luas Tanah",    _luas("Luas_Tanah"),
+                                     "Luas Bangunan", _luas("Luas_Bangunan")))
+                else:
+                    P.append(r2("Luas Tanah",    _luas("Luas_Tanah"),
+                                 "Luas Bangunan", _luas("Luas_Bangunan")))
                 if not is_s:
                     P.append(r2("Kondisi Bgn", safe_get(row,"Kondisi_Bangunan"),
                                 "Kelas Bgn",   safe_get(row,"Kelas_Bangunan")))
