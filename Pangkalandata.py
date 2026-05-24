@@ -154,6 +154,8 @@ file = st.sidebar.file_uploader("📂 Unggah file Excel data tanah", type=["xlsx
 
 if file and "last_file" in st.session_state and file != st.session_state["last_file"]:
     st.session_state["tampilkan"] = False
+    for _k in [k for k in st.session_state if k.startswith("adj_df_")]:
+        del st.session_state[_k]
 st.session_state["last_file"] = file
 
 if not file:
@@ -1579,8 +1581,14 @@ with tab_analisa:
                             for i in range(len(comp))
                         ],
                     })
+
+                    # Simpan ke session_state agar perubahan pengguna tidak hilang saat rerun
+                    _ss_adj_key = f"adj_df_{'_'.join(sorted(str(x) for x in selected))}"
+                    if _ss_adj_key not in st.session_state:
+                        st.session_state[_ss_adj_key] = edit_init.copy()
+
                     edited = st.data_editor(
-                        edit_init,
+                        st.session_state[_ss_adj_key],
                         use_container_width=True,
                         column_config={
                             "No":                  st.column_config.TextColumn("No", disabled=True, width="small"),
@@ -1592,8 +1600,9 @@ with tab_analisa:
                                                                                    min_value=-50.0, max_value=50.0, step=0.5, width="medium"),
                         },
                         hide_index=True,
-                        key=f"adj_ed_{'_'.join(sorted(str(x) for x in selected))}",
                     )
+                    # Simpan hasil edit kembali ke session_state
+                    st.session_state[_ss_adj_key] = edited
 
                     # ── Compute all adjustments ──────────────────────────────────
                     subj_loc_score = _road_total(subj_road_cls, subj_lajur)
