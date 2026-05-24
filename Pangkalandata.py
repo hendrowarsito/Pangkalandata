@@ -460,26 +460,55 @@ df["Tahun_Bersih"] = df["Tahun"].apply(bersihkan_tahun) if "Tahun" in df.columns
 
 # ── Koreksi Harga_Tanah dengan ekstraksi nilai bangunan (BTB) ──────────────
 # Rumus: (Harga_Total − Luas_Bangunan × (Kondisi/100) × Biaya_BTB) / Luas_Tanah
-if (not df_btb.empty
-        and "Kelas_Bangunan" in df_btb.columns
-        and "Biaya_BTB" in df_btb.columns):
-    btb_map = (df_btb
-               .dropna(subset=["Kelas_Bangunan", "Biaya_BTB"])
-               .assign(Kelas_Bangunan=lambda x: x["Kelas_Bangunan"].astype(str).str.strip())
-               .set_index("Kelas_Bangunan")["Biaya_BTB"]
-               .to_dict())
-    mask_comp = df.get("_sumber", pd.Series()) == "Data Pembanding"
+_btb_msg = ""
+if df_btb.empty:
+    _btb_msg = "⚠️ Sheet 'Data BTB' tidak ditemukan — harga/m² pakai Harga_Total / Luas_Tanah"
+elif "Kelas_Bangunan" not in df_btb.columns:
+    _btb_msg = f"⚠️ Kolom kelas bangunan tidak dikenali di BTB (kolom: {', '.join(df_btb.columns.tolist()[:6])})"
+elif "Biaya_BTB" not in df_btb.columns:
+    _btb_msg = f"⚠️ Kolom 'Pembulatan' tidak ditemukan di BTB (kolom: {', '.join(df_btb.columns.tolist()[:6])})"
+else:
+    # Normalisasi key ke lowercase+strip agar pencocokan tidak case-sensitive
+    btb_map = (
+        df_btb
+        .dropna(subset=["Kelas_Bangunan", "Biaya_BTB"])
+        .assign(Kelas_Bangunan=lambda x: x["Kelas_Bangunan"].astype(str).str.strip().str.lower())
+        .set_index("Kelas_Bangunan")["Biaya_BTB"]
+        .to_dict()
+    )
+    has_sumber = "_sumber" in df.columns
+    mask_comp  = (df["_sumber"] == "Data Pembanding") if has_sumber else pd.Series(True, index=df.index)
+
     if mask_comp.any() and "Kelas_Bangunan" in df.columns:
         df_c = df[mask_comp].copy()
-        df_c["Kelas_Bangunan"] = df_c["Kelas_Bangunan"].astype(str).str.strip()
-        df_c["_Biaya_BTB"] = df_c["Kelas_Bangunan"].map(btb_map)
-        need = ["Harga_Total", "Luas_Bangunan", "Kondisi_Bangunan", "Luas_Tanah", "_Biaya_BTB"]
-        has_all = df_c[need].notna().all(axis=1) & (df_c["Luas_Tanah"] > 0)
-        if has_all.any():
-            sub = df_c[has_all]
-            nilai_bgn = sub["Luas_Bangunan"] * (sub["Kondisi_Bangunan"] / 100) * sub["_Biaya_BTB"]
-            harga_baru = ((sub["Harga_Total"] - nilai_bgn) / sub["Luas_Tanah"]).round(0)
-            df.loc[harga_baru.index, "Harga_Tanah"] = harga_baru
+        df_c["_Kelas_norm"] = df_c["Kelas_Bangunan"].astype(str).str.strip().str.lower()
+        df_c["_Biaya_BTB"]  = df_c["_Kelas_norm"].map(btb_map)
+
+        need     = ["Harga_Total", "Luas_Bangunan", "Kondisi_Bangunan", "Luas_Tanah", "_Biaya_BTB"]
+        miss_col = [c for c in need[:-1] if c not in df_c.columns]
+        if miss_col:
+            _btb_msg = f"⚠️ Kolom tidak ada di data: {', '.join(miss_col)}"
+        else:
+            has_all   = df_c[need].notna().all(axis=1) & (df_c["Luas_Tanah"] > 0)
+            n_nomatch = int((df_c["_Biaya_BTB"].isna() &
+                             df_c[["Harga_Total","Luas_Bangunan","Kondisi_Bangunan","Luas_Tanah"]].notna().all(axis=1)).sum())
+            if has_all.any():
+                sub       = df_c[has_all]
+                nilai_bgn = sub["Luas_Bangunan"] * (sub["Kondisi_Bangunan"] / 100) * sub["_Biaya_BTB"]
+                harga_baru = ((sub["Harga_Total"] - nilai_bgn) / sub["Luas_Tanah"]).round(0)
+                df.loc[harga_baru.index, "Harga_Tanah"] = harga_baru
+                _btb_msg = f"✅ BTB koreksi diterapkan pada {int(has_all.sum())} data pembanding"
+                if n_nomatch:
+                    unmatched = df_c.loc[df_c["_Biaya_BTB"].isna(), "Kelas_Bangunan"].dropna().unique().tolist()
+                    _btb_msg += f" | ⚠️ {n_nomatch} kelas tidak cocok: {unmatched}"
+            else:
+                unmatched = df_c.loc[df_c["_Biaya_BTB"].isna(), "Kelas_Bangunan"].dropna().unique().tolist()
+                btb_keys  = list(btb_map.keys())
+                _btb_msg  = (f"⚠️ BTB dimuat ({len(btb_map)} kelas) tapi tidak ada yang cocok.\n"
+                             f"Kelas di data: {unmatched[:4]}\n"
+                             f"Kelas di BTB : {btb_keys[:4]}")
+    else:
+        _btb_msg = "ℹ️ Tidak ada data pembanding atau kolom Kelas_Bangunan tidak ada"
 
 # Tunjukkan format yang terdeteksi
 _fmt = df["_format"].iloc[0] if "_fmt" not in st.session_state and not df.empty and "_format" in df.columns else ""
@@ -487,6 +516,14 @@ if _fmt == "multi-sheet":
     n_prop = int((df["_sumber"] == "Data Properti").sum())   if "_sumber" in df.columns else 0
     n_pemb = int((df["_sumber"] == "Data Pembanding").sum()) if "_sumber" in df.columns else 0
     st.sidebar.success(f"✅ Format multi-sheet: {n_prop} Obyek Penilaian + {n_pemb} Data Pembanding")
+
+if _btb_msg:
+    if _btb_msg.startswith("✅"):
+        st.sidebar.success(_btb_msg)
+    elif _btb_msg.startswith("ℹ️"):
+        st.sidebar.info(_btb_msg)
+    else:
+        st.sidebar.warning(_btb_msg)
 
 # ─── Filter controls ──────────────────────────────────────────────────────────
 city_input = st.sidebar.text_input("🔍 Cari Kota/Kabupaten (sebagian nama OK):")
