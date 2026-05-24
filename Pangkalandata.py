@@ -326,13 +326,20 @@ def load_btb_sheet(uploaded_file):
         return pd.DataFrame()
     # Normalkan nama kolom
     df.columns = [str(c).strip() for c in df.columns]
+    # Deteksi kolom: "Kelas Bangunan" prioritas, fallback ke "Elemen Bangunan"
+    kelas_col = next(
+        (c for c in df.columns if "kelas" in c.lower() and "bangunan" in c.lower()), None
+    ) or next(
+        (c for c in df.columns if "elemen" in c.lower()), None
+    )
+    biaya_col = next(
+        (c for c in df.columns if "pembulatan" in c.lower()), None
+    )
     rename_btb = {}
-    for c in df.columns:
-        cl = c.lower()
-        if "kelas" in cl and "bangunan" in cl:
-            rename_btb[c] = "Kelas_Bangunan"
-        elif "pembulatan" in cl:
-            rename_btb[c] = "Biaya_BTB"
+    if kelas_col:
+        rename_btb[kelas_col] = "Kelas_Bangunan"
+    if biaya_col:
+        rename_btb[biaya_col] = "Biaya_BTB"
     df = df.rename(columns=rename_btb)
     if "Biaya_BTB" in df.columns:
         df["Biaya_BTB"] = df["Biaya_BTB"].apply(parse_indo_number)
