@@ -1639,12 +1639,23 @@ with tab_analisa:
                     comp["Harga_Stl_Lokasi"]      = comp["Harga_Stl_Kepemilikan"] * (1 + comp["Kor_Lokasi_%"]     / 100)
                     comp["Harga_Final"]            = comp["Harga_Stl_Lokasi"]     * (1 + comp["Kor_Peruntukan_%"]  / 100)
 
+                    # ── Total & bobot penyesuaian ────────────────────────────────
+                    _kor_cols = ["Kor_Waktu_%", "Kor_Luas_%",
+                                 "Kor_Kepemilikan_%", "Kor_Lokasi_%", "Kor_Peruntukan_%"]
+                    comp["Total_Penyesuaian_%"] = comp[_kor_cols].sum(axis=1).round(2)
+                    comp["Total_Absolut_%"]     = comp[_kor_cols].abs().sum(axis=1).round(2)
+                    # Bobot: berbanding terbalik dengan total absolut
+                    _inv = 1.0 / (comp["Total_Absolut_%"] + 0.01)
+                    comp["Bobot_%"] = (_inv / _inv.sum() * 100).round(1)
+
                     # ── Summary table ────────────────────────────────────────────
                     tbl = comp[[
                         "Nomor", "Alamat", "Tahun_Bersih", "Luas_Tanah",
                         "Harga_Tanah",
                         "Kor_Waktu_%", "Kor_Luas_%",
                         "Kor_Kepemilikan_%", "Kor_Lokasi_%", "Kor_Peruntukan_%",
+                        "Total_Penyesuaian_%", "Total_Absolut_%",
+                        "Bobot_%",
                         "Harga_Final",
                     ]].copy()
                     tbl.columns = [
@@ -1652,6 +1663,8 @@ with tab_analisa:
                         "Harga Awal",
                         "Kor. Waktu (%)", "Kor. Luas (%)",
                         "Kor. Kepemilikan (%)", "Kor. Lokasi (%)", "Kor. Peruntukan (%)",
+                        "Total Penyesuaian (%)", "Total Absolut (%)",
+                        "Bobot (%)",
                         "Harga Final",
                     ]
                     st.markdown("##### 📊 Hasil Koreksi")
@@ -1659,19 +1672,22 @@ with tab_analisa:
                         tbl,
                         use_container_width=True,
                         column_config={
-                            "Harga Awal":           st.column_config.NumberColumn(format="Rp %.0f"),
-                            "Harga Final":          st.column_config.NumberColumn(format="Rp %.0f"),
-                            "Kor. Waktu (%)":       st.column_config.NumberColumn(format="%.1f %%"),
-                            "Kor. Luas (%)":        st.column_config.NumberColumn(format="%.1f %%"),
-                            "Kor. Kepemilikan (%)": st.column_config.NumberColumn(format="%.1f %%"),
-                            "Kor. Lokasi (%)":      st.column_config.NumberColumn(format="%.1f %%"),
-                            "Kor. Peruntukan (%)":  st.column_config.NumberColumn(format="%.1f %%"),
-                            "Luas (m²)":            st.column_config.NumberColumn(format="%.0f m²"),
+                            "Harga Awal":              st.column_config.NumberColumn("Harga Awal (Rp/m²)",  format="%.0f"),
+                            "Harga Final":             st.column_config.NumberColumn("Harga Final (Rp/m²)", format="%.0f"),
+                            "Kor. Waktu (%)":          st.column_config.NumberColumn(format="%.1f %%"),
+                            "Kor. Luas (%)":           st.column_config.NumberColumn(format="%.1f %%"),
+                            "Kor. Kepemilikan (%)":    st.column_config.NumberColumn(format="%.1f %%"),
+                            "Kor. Lokasi (%)":         st.column_config.NumberColumn(format="%.1f %%"),
+                            "Kor. Peruntukan (%)":     st.column_config.NumberColumn(format="%.1f %%"),
+                            "Total Penyesuaian (%)":   st.column_config.NumberColumn(format="%.2f %%"),
+                            "Total Absolut (%)":       st.column_config.NumberColumn(format="%.2f %%"),
+                            "Bobot (%)":               st.column_config.NumberColumn(format="%.1f %%"),
+                            "Luas (m²)":               st.column_config.NumberColumn(format="%.0f m²"),
                         },
                     )
 
-                    # ── Result metrics ───────────────────────────────────────────
-                    harga_indikasi = comp["Harga_Final"].mean()
+                    # ── Result metrics (gunakan bobot untuk harga indikasi) ───────
+                    harga_indikasi = (comp["Harga_Final"] * comp["Bobot_%"] / 100).sum()
                     cv = (
                         comp["Harga_Final"].std() / comp["Harga_Final"].mean() * 100
                         if len(comp) > 1 and comp["Harga_Final"].mean() != 0
