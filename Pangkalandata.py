@@ -1653,6 +1653,7 @@ with tab_analisa:
                         "Kor_Kepemilikan_%", "Kor_Lokasi_%", "Kor_Peruntukan_%",
                         "Total_Penyesuaian_%", "Total_Absolut_%",
                         "Bobot_%",
+                        "Harga_Stl_Koreksi",
                         "Harga_Final",
                     ]].copy()
                     tbl.columns = [
@@ -1662,6 +1663,7 @@ with tab_analisa:
                         "Kor. Kepemilikan (%)", "Kor. Lokasi (%)", "Kor. Peruntukan (%)",
                         "Total Penyesuaian (%)", "Total Absolut (%)",
                         "Bobot (%)",
+                        "Harga Terkoreksi",
                         "Harga Final",
                     ]
                     st.markdown("##### 📊 Hasil Koreksi")
@@ -1669,8 +1671,9 @@ with tab_analisa:
                         tbl,
                         use_container_width=True,
                         column_config={
-                            "Harga Awal":              st.column_config.NumberColumn("Harga Awal (Rp/m²)",  format="%.0f"),
-                            "Harga Final":             st.column_config.NumberColumn("Harga Final (Rp/m²)", format="%.0f"),
+                            "Harga Awal":              st.column_config.NumberColumn("Harga Awal (Rp/m²)",      format="%.0f"),
+                            "Harga Terkoreksi":        st.column_config.NumberColumn("Harga Terkoreksi (Rp/m²)", format="%.0f"),
+                            "Harga Final":             st.column_config.NumberColumn("Harga Final (Rp/m²)",     format="%.0f"),
                             "Kor. Diskon (%)":         st.column_config.NumberColumn(format="%.1f %%"),
                             "Kor. Waktu (%)":          st.column_config.NumberColumn(format="%.1f %%"),
                             "Kor. Luas (%)":           st.column_config.NumberColumn(format="%.1f %%"),
@@ -1711,9 +1714,7 @@ with tab_analisa:
                     fig.add_trace(go.Bar(x=comp["Nomor"].astype(str), y=comp["Harga_Tanah"],
                                          name="Harga Awal", marker_color="#a8d8ea"))
                     fig.add_trace(go.Bar(x=comp["Nomor"].astype(str), y=comp["Harga_Stl_Koreksi"],
-                                         name="Stl. Koreksi", marker_color="#f9c74f"))
-                    fig.add_trace(go.Bar(x=comp["Nomor"].astype(str), y=comp["Harga_Final"],
-                                         name="Harga Final (×Bobot)", marker_color="#667eea"))
+                                         name="Harga Terkoreksi", marker_color="#667eea"))
                     if subj_harga > 0:
                         fig.add_hline(y=subj_harga, line_dash="dash", line_color="red",
                                       annotation_text=f"Harga Obyek: {format_currency(subj_harga)}")
