@@ -1438,20 +1438,14 @@ with tab_analisa:
     )
 
     # ── Lookup tables ─────────────────────────────────────────────────────────
-    _RANK_KEP = {
-        "SHM": 4, "SHSRS": 3, "SHGB": 2, "HGB": 2,
-        "SHP": 1, "HP": 1, "HGU": 1, "Girik/AJB": 0, "Lainnya": 1,
-    }
     _ROAD_SCORE = {"Arteri": 4, "Kolektor": 3, "Lokal": 2, "Lingkungan": 1}
-    _OWN_OPTS  = list(_RANK_KEP.keys())
-    _ROAD_OPTS = list(_ROAD_SCORE.keys())
+    _LANE_SCORE = {"Gang": 0, "1 lajur": 1, "2 lajur": 2, "4 lajur": 3, "6 lajur": 4, "8 lajur": 5}
+    _OWN_OPTS   = ["SHM", "SHSRS", "SHGB", "HGB", "SHP", "HP", "HGU", "Girik/AJB", "Lainnya"]
+    _ROAD_OPTS  = list(_ROAD_SCORE.keys())
+    _LANE_OPTS  = list(_LANE_SCORE.keys())
 
-    def _road_total(kelas, lebar):
-        sc = _ROAD_SCORE.get(str(kelas), 2)
-        w  = float(lebar) if lebar else 8.0
-        if w >= 20: sc += 1
-        elif w < 10: sc -= 1
-        return sc
+    def _road_total(kelas, lajur):
+        return _ROAD_SCORE.get(str(kelas), 2) + _LANE_SCORE.get(str(lajur), 1)
 
     def _detect_kep(val):
         v = str(val).strip().upper().replace(" ", "")
@@ -1496,8 +1490,7 @@ with tab_analisa:
 
             st.markdown("##### 🛣️ Lokasi Obyek")
             subj_road_cls = st.selectbox("Kelas Jalan Obyek", _ROAD_OPTS, index=1, key="an_subj_road_cls")
-            subj_road_w   = st.number_input("Lebar Jalan Obyek (m)", value=12.0,
-                                             min_value=1.0, max_value=60.0, step=1.0, key="an_subj_road_w")
+            subj_lajur    = st.selectbox("Jumlah Lajur Obyek", _LANE_OPTS, index=2, key="an_subj_lajur")
 
             st.markdown("#### ⚙️ Parameter Koreksi")
             ref_year       = st.number_input("Tahun Referensi Penilaian", value=2025,
@@ -1513,7 +1506,7 @@ with tab_analisa:
                                               help="Penyesuaian harga akibat perbedaan luas per 100m²")
             lokasi_ppt     = st.number_input("Koreksi Lokasi (%/poin)", value=5.0,
                                               min_value=0.0, max_value=20.0, step=0.5,
-                                              help="Penyesuaian per poin perbedaan skor lokasi (kelas jalan + lebar)")
+                                              help="Penyesuaian per poin perbedaan skor lokasi (kelas jalan + jumlah lajur)")
 
         with col_comp:
             st.markdown("#### 📋 Pilih Data Pembanding")
@@ -1544,9 +1537,9 @@ with tab_analisa:
                             if "Kepemilikan" in comp.columns else "Lainnya"
                             for i in range(len(comp))
                         ],
-                        "Kelas Jalan":          ["Lokal"] * len(comp),
-                        "Lebar Jalan (m)":      [8.0]    * len(comp),
-                        "Kor. Peruntukan (%)":  [0.0]    * len(comp),
+                        "Kelas Jalan":          ["Lokal"]   * len(comp),
+                        "Jumlah Lajur":         ["2 lajur"] * len(comp),
+                        "Kor. Peruntukan (%)":  [0.0]       * len(comp),
                     })
                     edited = st.data_editor(
                         edit_init,
@@ -1555,7 +1548,7 @@ with tab_analisa:
                             "No":                  st.column_config.TextColumn("No", disabled=True, width="small"),
                             "Kepemilikan":         st.column_config.SelectboxColumn("Kepemilikan", options=_OWN_OPTS, width="medium"),
                             "Kelas Jalan":         st.column_config.SelectboxColumn("Kelas Jalan", options=_ROAD_OPTS, width="medium"),
-                            "Lebar Jalan (m)":     st.column_config.NumberColumn("Lebar Jln (m)", min_value=1, max_value=60, step=1, width="small"),
+                            "Jumlah Lajur":        st.column_config.SelectboxColumn("Jumlah Lajur", options=_LANE_OPTS, width="medium"),
                             "Kor. Peruntukan (%)": st.column_config.NumberColumn("Kor. Peruntukan (%)", format="%.1f%%",
                                                                                    min_value=-50.0, max_value=50.0, step=0.5, width="medium"),
                         },
@@ -1564,14 +1557,19 @@ with tab_analisa:
                     )
 
                     # ── Compute all adjustments ──────────────────────────────────
-                    subj_kep_rank  = _RANK_KEP.get(subj_kep, 1)
-                    subj_loc_score = _road_total(subj_road_cls, subj_road_w)
+                    subj_loc_score = _road_total(subj_road_cls, subj_lajur)
 
-                    comp["Kor_Kepemilikan_%"] = edited["Kepemilikan"].apply(
-                        lambda k: (subj_kep_rank - _RANK_KEP.get(str(k), 1)) * 5
-                    )
+                    # Kepemilikan: SHM vs non-SHM = ±5% (flat, bukan per-ranking)
+                    def _kep_adj(comp_kep):
+                        if subj_kep == "SHM" and str(comp_kep) != "SHM":
+                            return 5.0   # pembanding lebih rendah → sesuaikan naik
+                        elif subj_kep != "SHM" and str(comp_kep) == "SHM":
+                            return -5.0  # pembanding lebih tinggi → sesuaikan turun
+                        return 0.0
+
+                    comp["Kor_Kepemilikan_%"] = edited["Kepemilikan"].apply(_kep_adj)
                     comp["Kor_Lokasi_%"] = edited.apply(
-                        lambda r: (subj_loc_score - _road_total(r["Kelas Jalan"], r["Lebar Jalan (m)"])) * lokasi_ppt,
+                        lambda r: (subj_loc_score - _road_total(r["Kelas Jalan"], r["Jumlah Lajur"])) * lokasi_ppt,
                         axis=1,
                     )
                     comp["Kor_Peruntukan_%"] = pd.to_numeric(
