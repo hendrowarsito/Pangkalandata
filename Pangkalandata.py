@@ -1632,27 +1632,24 @@ with tab_analisa:
                     else:
                         comp["Kor_Luas_%"]   = 0.0
 
-                    comp["Harga_Stl_Diskon"]     = comp["Harga_Tanah"]          * (1 - diskon_pct          / 100)
-                    comp["Harga_Stl_Waktu"]       = comp["Harga_Stl_Diskon"]     * (1 + comp["Kor_Waktu_%"] / 100)
-                    comp["Harga_Stl_Luas"]        = comp["Harga_Stl_Waktu"]      * (1 + comp["Kor_Luas_%"]  / 100)
-                    comp["Harga_Stl_Kepemilikan"] = comp["Harga_Stl_Luas"]       * (1 + comp["Kor_Kepemilikan_%"] / 100)
-                    comp["Harga_Stl_Lokasi"]      = comp["Harga_Stl_Kepemilikan"] * (1 + comp["Kor_Lokasi_%"]     / 100)
-                    comp["Harga_Final"]            = comp["Harga_Stl_Lokasi"]     * (1 + comp["Kor_Peruntukan_%"]  / 100)
-
                     # ── Total & bobot penyesuaian ────────────────────────────────
-                    _kor_cols = ["Kor_Waktu_%", "Kor_Luas_%",
+                    comp["Kor_Diskon_%"] = -diskon_pct
+                    _kor_cols = ["Kor_Diskon_%", "Kor_Waktu_%", "Kor_Luas_%",
                                  "Kor_Kepemilikan_%", "Kor_Lokasi_%", "Kor_Peruntukan_%"]
                     comp["Total_Penyesuaian_%"] = comp[_kor_cols].sum(axis=1).round(2)
                     comp["Total_Absolut_%"]     = comp[_kor_cols].abs().sum(axis=1).round(2)
                     # Bobot: berbanding terbalik dengan total absolut
                     _inv = 1.0 / (comp["Total_Absolut_%"] + 0.01)
                     comp["Bobot_%"] = (_inv / _inv.sum() * 100).round(1)
+                    # Harga Final = Harga Awal × (1 + Total Penyesuaian) × Bobot
+                    comp["Harga_Stl_Koreksi"] = comp["Harga_Tanah"] * (1 + comp["Total_Penyesuaian_%"] / 100)
+                    comp["Harga_Final"]        = comp["Harga_Stl_Koreksi"] * comp["Bobot_%"] / 100
 
                     # ── Summary table ────────────────────────────────────────────
                     tbl = comp[[
                         "Nomor", "Alamat", "Tahun_Bersih", "Luas_Tanah",
                         "Harga_Tanah",
-                        "Kor_Waktu_%", "Kor_Luas_%",
+                        "Kor_Diskon_%", "Kor_Waktu_%", "Kor_Luas_%",
                         "Kor_Kepemilikan_%", "Kor_Lokasi_%", "Kor_Peruntukan_%",
                         "Total_Penyesuaian_%", "Total_Absolut_%",
                         "Bobot_%",
@@ -1661,7 +1658,7 @@ with tab_analisa:
                     tbl.columns = [
                         "Nomor", "Alamat", "Tahun", "Luas (m²)",
                         "Harga Awal",
-                        "Kor. Waktu (%)", "Kor. Luas (%)",
+                        "Kor. Diskon (%)", "Kor. Waktu (%)", "Kor. Luas (%)",
                         "Kor. Kepemilikan (%)", "Kor. Lokasi (%)", "Kor. Peruntukan (%)",
                         "Total Penyesuaian (%)", "Total Absolut (%)",
                         "Bobot (%)",
@@ -1674,6 +1671,7 @@ with tab_analisa:
                         column_config={
                             "Harga Awal":              st.column_config.NumberColumn("Harga Awal (Rp/m²)",  format="%.0f"),
                             "Harga Final":             st.column_config.NumberColumn("Harga Final (Rp/m²)", format="%.0f"),
+                            "Kor. Diskon (%)":         st.column_config.NumberColumn(format="%.1f %%"),
                             "Kor. Waktu (%)":          st.column_config.NumberColumn(format="%.1f %%"),
                             "Kor. Luas (%)":           st.column_config.NumberColumn(format="%.1f %%"),
                             "Kor. Kepemilikan (%)":    st.column_config.NumberColumn(format="%.1f %%"),
@@ -1686,11 +1684,12 @@ with tab_analisa:
                         },
                     )
 
-                    # ── Result metrics (gunakan bobot untuk harga indikasi) ───────
-                    harga_indikasi = (comp["Harga_Final"] * comp["Bobot_%"] / 100).sum()
+                    # ── Result metrics ───────────────────────────────────────────
+                    # Harga Final sudah menyertakan bobot, jadi indikasi = sum(Harga_Final)
+                    harga_indikasi = comp["Harga_Final"].sum()
                     cv = (
-                        comp["Harga_Final"].std() / comp["Harga_Final"].mean() * 100
-                        if len(comp) > 1 and comp["Harga_Final"].mean() != 0
+                        comp["Harga_Stl_Koreksi"].std() / comp["Harga_Stl_Koreksi"].mean() * 100
+                        if len(comp) > 1 and comp["Harga_Stl_Koreksi"].mean() != 0
                         else 0.0
                     )
 
@@ -1711,10 +1710,10 @@ with tab_analisa:
                     fig = go.Figure()
                     fig.add_trace(go.Bar(x=comp["Nomor"].astype(str), y=comp["Harga_Tanah"],
                                          name="Harga Awal", marker_color="#a8d8ea"))
-                    fig.add_trace(go.Bar(x=comp["Nomor"].astype(str), y=comp["Harga_Stl_Diskon"],
-                                         name="Stl. Diskon", marker_color="#f9c74f"))
+                    fig.add_trace(go.Bar(x=comp["Nomor"].astype(str), y=comp["Harga_Stl_Koreksi"],
+                                         name="Stl. Koreksi", marker_color="#f9c74f"))
                     fig.add_trace(go.Bar(x=comp["Nomor"].astype(str), y=comp["Harga_Final"],
-                                         name="Harga Final", marker_color="#667eea"))
+                                         name="Harga Final (×Bobot)", marker_color="#667eea"))
                     if subj_harga > 0:
                         fig.add_hline(y=subj_harga, line_dash="dash", line_color="red",
                                       annotation_text=f"Harga Obyek: {format_currency(subj_harga)}")
