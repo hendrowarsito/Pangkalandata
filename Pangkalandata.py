@@ -1447,6 +1447,21 @@ with tab_analisa:
     def _road_total(kelas, lajur):
         return _ROAD_SCORE.get(str(kelas), 2) + _LANE_SCORE.get(str(lajur), 1)
 
+    def _peruntukan_score(val):
+        """Skor peruntukan: Komersial(5) > Perumahan(4) > Industri(3) > Pertanian(2) > Fasilitias Umum(1)."""
+        v = str(val).lower()
+        if any(k in v for k in ["komersial", "perdagangan", "jasa", "niaga", "bisnis"]):
+            return 5
+        if any(k in v for k in ["permukiman", "perumahan", "hunian", "residensial"]):
+            return 4
+        if "industri" in v:
+            return 3
+        if any(k in v for k in ["pertanian", "sawah", "kebun", "perkebunan", "ladang"]):
+            return 2
+        if any(k in v for k in ["fasilitas", "fasum", "sosial", "pendidikan", "kesehatan"]):
+            return 1
+        return None
+
     def _detect_kep(val):
         v = str(val).strip().upper().replace(" ", "")
         for k in _OWN_OPTS:
@@ -1482,18 +1497,29 @@ with tab_analisa:
                 subj_kep = st.selectbox("Bukti Kepemilikan Obyek", _OWN_OPTS,
                                         index=_OWN_OPTS.index(_kep_def) if _kep_def in _OWN_OPTS else 0,
                                         key="an_subj_kep")
+                # Default tahun dari Tanggal Inspeksi
+                _tgl_ins = s.get("Tanggal_Inspeksi")
+                try:
+                    _default_ref_year = int(pd.to_datetime(str(_tgl_ins), dayfirst=True, errors="coerce").year)
+                    if pd.isna(_default_ref_year): _default_ref_year = 2025
+                except Exception:
+                    _default_ref_year = 2025
+                # Skor peruntukan obyek untuk auto-koreksi
+                _subj_perun_score = _peruntukan_score(s.get("Peruntukan", ""))
             else:
                 st.warning("Tidak ada baris 'Obyek Penilaian' di data. Masukkan manual:")
                 subj_luas  = st.number_input("Luas Tanah Obyek (m²)", value=0.0, min_value=0.0, step=10.0)
                 subj_harga = 0.0
                 subj_kep   = st.selectbox("Bukti Kepemilikan Obyek", _OWN_OPTS, key="an_subj_kep")
+                _default_ref_year = 2025
+                _subj_perun_score = None
 
             st.markdown("##### 🛣️ Lokasi Obyek")
             subj_road_cls = st.selectbox("Kelas Jalan Obyek", _ROAD_OPTS, index=1, key="an_subj_road_cls")
             subj_lajur    = st.selectbox("Jumlah Lajur Obyek", _LANE_OPTS, index=2, key="an_subj_lajur")
 
             st.markdown("#### ⚙️ Parameter Koreksi")
-            ref_year       = st.number_input("Tahun Referensi Penilaian", value=2025,
+            ref_year       = st.number_input("Tahun Referensi Penilaian", value=_default_ref_year,
                                               min_value=2000, max_value=2100, step=1)
             diskon_pct     = st.number_input("Diskon Penawaran (%)", value=10.0,
                                               min_value=0.0, max_value=50.0, step=0.5,
@@ -1527,11 +1553,20 @@ with tab_analisa:
                     # ── Editable per-comparable adjustment table ─────────────────
                     st.markdown("##### ✏️ Penyesuaian Per Data Pembanding")
                     st.caption(
-                        "Kepemilikan otomatis terbaca dari data. "
-                        "Isi Kelas/Lebar Jalan dan Kor. Peruntukan untuk setiap pembanding."
+                        "Kepemilikan & Peruntukan otomatis terbaca dari data. "
+                        "Isi Kelas Jalan, Jumlah Lajur, dan koreksi bisa diubah manual."
                     )
+
+                    # Auto-hitung Kor. Peruntukan dari kategori penggunaan tanah
+                    def _perun_adj(comp_perun_val):
+                        comp_score = _peruntukan_score(comp_perun_val)
+                        if _subj_perun_score is None or comp_score is None:
+                            return 0.0
+                        return round((_subj_perun_score - comp_score) * 2.5, 1)
+
                     edit_init = pd.DataFrame({
                         "No":                   comp["Nomor"].astype(str).tolist(),
+                        "Alamat":               comp["Alamat"].fillna("—").tolist() if "Alamat" in comp.columns else ["—"] * len(comp),
                         "Kepemilikan":          [
                             _detect_kep(comp.at[i, "Kepemilikan"])
                             if "Kepemilikan" in comp.columns else "Lainnya"
@@ -1539,13 +1574,17 @@ with tab_analisa:
                         ],
                         "Kelas Jalan":          ["Lokal"]   * len(comp),
                         "Jumlah Lajur":         ["2 lajur"] * len(comp),
-                        "Kor. Peruntukan (%)":  [0.0]       * len(comp),
+                        "Kor. Peruntukan (%)":  [
+                            _perun_adj(comp.at[i, "Peruntukan"]) if "Peruntukan" in comp.columns else 0.0
+                            for i in range(len(comp))
+                        ],
                     })
                     edited = st.data_editor(
                         edit_init,
                         use_container_width=True,
                         column_config={
                             "No":                  st.column_config.TextColumn("No", disabled=True, width="small"),
+                            "Alamat":              st.column_config.TextColumn("Alamat", disabled=True, width="large"),
                             "Kepemilikan":         st.column_config.SelectboxColumn("Kepemilikan", options=_OWN_OPTS, width="medium"),
                             "Kelas Jalan":         st.column_config.SelectboxColumn("Kelas Jalan", options=_ROAD_OPTS, width="medium"),
                             "Jumlah Lajur":        st.column_config.SelectboxColumn("Jumlah Lajur", options=_LANE_OPTS, width="medium"),
