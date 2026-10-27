@@ -12,7 +12,7 @@ import numpy as np
 
 st.set_page_config(
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
     page_title="Pangkalan Data Tanah KJPP SRR",
     page_icon=":material/landscape:"
 )
@@ -28,15 +28,43 @@ LINE    = "#E2E8F0"
 
 st.markdown(f"""
 <style>
-.block-container {{ padding-top: 2.2rem; padding-bottom: 3rem; max-width: 1500px; }}
+/* Tata letak satu layar penuh, tanpa sidebar & header bawaan Streamlit */
+header[data-testid="stHeader"], [data-testid="stSidebar"], [data-testid="stSidebarCollapsedControl"],
+[data-testid="collapsedControl"] {{ display:none !important; }}
+.stMainBlockContainer.block-container {{ padding:0 2.5rem 3rem !important; max-width:100% !important; }}
+[data-testid="stElementContainer"]:has(> div style) {{ display:none; }}  /* slot kosong blok CSS ini */
 h1, h2, h3, h4 {{ letter-spacing: -0.01em; }}
-[data-testid="stSidebar"] {{ border-right: 1px solid {LINE}; }}
-[data-testid="stSidebar"] .block-container {{ padding-top: 1.5rem; }}
+
+/* Bilah atas & menu tab selalu terlihat (sticky).
+   Container bilah atas dibungkus stLayoutWrapper, jadi pembungkus itulah yang dibuat sticky. */
+:root {{ --topbar-h: 64px; }}
+[data-testid="stLayoutWrapper"]:has(> .st-key-topbar), .stMainBlockContainer > div > .st-key-topbar {{
+    position:sticky !important; top:0; z-index:1000;
+    margin:0 -2.5rem !important; width:calc(100% + 5rem) !important; max-width:none !important; }}
+div.st-key-topbar {{ min-height:var(--topbar-h) !important; width:100% !important; padding:0 2.5rem;
+                     justify-content:center;
+                     background:rgba(255,255,255,.96); backdrop-filter:blur(8px);
+                     border-bottom:1px solid {LINE}; box-shadow:0 1px 3px rgba(15,42,68,.05); }}
+.stTabs [role="tablist"] {{ position:sticky !important; top:var(--topbar-h); z-index:999;
+                            background:#fff; }}
+@media (max-width: 640px) {{
+  .stMainBlockContainer.block-container {{ padding:0 1rem 2rem !important; }}
+  [data-testid="stLayoutWrapper"]:has(> .st-key-topbar) {{ margin:0 -1rem !important;
+                                                           width:calc(100% + 2rem) !important; }}
+  div.st-key-topbar {{ padding:0 1rem; }}
+  /* Bilah atas tetap satu baris di layar kecil */
+  .st-key-topbar [data-testid="stHorizontalBlock"] {{ flex-wrap:nowrap !important; gap:.5rem !important; }}
+  .st-key-topbar [data-testid="stColumn"] {{ min-width:0 !important; width:auto !important;
+                                             flex:0 1 auto !important; }}
+  .st-key-topbar [data-testid="stColumn"]:first-child {{ flex:1 1 auto !important; }}
+  .brand .t1 {{ font-size:.85rem; }}
+  .brand .t2 {{ display:none; }}
+  .stTabs [role="tablist"] {{ overflow-x:auto !important; gap:1rem; }}
+}}
 
 /* Header aplikasi */
 .app-header {{ display:flex; align-items:flex-end; justify-content:space-between;
-               gap:1rem; flex-wrap:wrap; padding-bottom:.9rem; margin-bottom:.4rem;
-               border-bottom:1px solid {LINE}; }}
+               gap:1rem; flex-wrap:wrap; padding:1.6rem 0 .3rem; }}
 .app-header h1 {{ font-size:1.55rem; font-weight:700; color:{NAVY_DK}; margin:0; padding:0; }}
 .app-header .sub {{ color:{SLATE}; font-size:.9rem; margin-top:.15rem; }}
 .chips {{ display:flex; gap:.4rem; flex-wrap:wrap; }}
@@ -76,15 +104,13 @@ h1, h2, h3, h4 {{ letter-spacing: -0.01em; }}
 .kv dt {{ color:{SLATE}; }}
 .kv dd {{ margin:0; color:#1E293B; font-weight:500; }}
 
-/* Sidebar */
-.brand {{ display:flex; gap:.65rem; align-items:center; margin-bottom:.4rem; }}
+/* Bilah atas */
+.brand {{ display:flex; gap:.65rem; align-items:center; }}
 .brand .logo {{ width:38px; height:38px; border-radius:9px; background:{NAVY}; color:#fff;
                 display:flex; align-items:center; justify-content:center; font-weight:800;
                 font-size:.9rem; letter-spacing:.02em; }}
 .brand .t1 {{ font-weight:700; color:{NAVY_DK}; font-size:.98rem; line-height:1.15; }}
 .brand .t2 {{ color:{SLATE}; font-size:.74rem; }}
-.side-label {{ color:{SLATE}; font-size:.72rem; font-weight:700; text-transform:uppercase;
-               letter-spacing:.06em; margin:1.1rem 0 .4rem; }}
 .status-line {{ font-size:.8rem; color:#334155; display:flex; gap:.45rem; align-items:baseline;
                 margin:.2rem 0; }}
 .dot {{ width:.5rem; height:.5rem; border-radius:50%; display:inline-block; flex-shrink:0; }}
@@ -103,8 +129,8 @@ h1, h2, h3, h4 {{ letter-spacing: -0.01em; }}
 .feat p {{ margin:0; color:{SLATE}; font-size:.86rem; line-height:1.45; }}
 
 /* Tab */
-.stTabs [data-baseweb="tab-list"] {{ gap:1.4rem; border-bottom:1px solid {LINE}; }}
-.stTabs [data-baseweb="tab"] {{ padding:.6rem 0; font-weight:600; }}
+.stTabs [role="tablist"] {{ gap:1.4rem; border-bottom:1px solid {LINE}; }}
+.stTabs [role="tab"] {{ padding:.6rem 0; font-weight:600; }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -254,24 +280,24 @@ def safe_get(row, col, default="-"):
     val = getattr(row, col, default)
     return default if pd.isna(val) else val
 
-# ─── Sidebar ─────────────────────────────────────────────────────────────────
-st.sidebar.markdown(
+# ─── Bilah atas (selalu terlihat) ────────────────────────────────────────────
+with st.container(key="topbar"):
+    tb_brand, tb_file, tb_filter = st.columns([6, 2.4, 1.3], vertical_alignment="center")
+tb_brand.markdown(
     '<div class="brand"><div class="logo">SRR</div><div>'
     '<div class="t1">Pangkalan Data Tanah</div>'
     '<div class="t2">KJPP Suwendho Rinaldy dan Rekan</div></div></div>',
     unsafe_allow_html=True,
 )
-st.sidebar.markdown('<div class="side-label">Sumber Data</div>', unsafe_allow_html=True)
-file = st.sidebar.file_uploader("Unggah file Excel data tanah", type=["xlsx"],
-                                label_visibility="collapsed")
 
-if file and "last_file" in st.session_state and file != st.session_state["last_file"]:
-    for _k in [k for k in st.session_state if k.startswith("adj_df_")]:
-        del st.session_state[_k]
-    st.session_state.pop("peta_sel", None)
-st.session_state["last_file"] = file
-
-if not file:
+_has_file = st.session_state.get("upload_xlsx") is not None
+if _has_file:
+    # File sudah ada → pengunggah pindah ke menu file di bilah atas
+    with tb_file.popover(st.session_state["upload_xlsx"].name, icon=":material/description:",
+                         use_container_width=True):
+        file = st.file_uploader("Ganti file Excel", type=["xlsx"], key="upload_xlsx")
+        status_slot = st.container()
+else:
     st.markdown("""
     <div class="hero">
       <div class="eyebrow">Reviu Penilaian Tanah</div>
@@ -279,6 +305,12 @@ if not file:
       <p>Telaah data pembanding, petakan lokasi terhadap obyek penilaian, dan hitung
          indikasi nilai tanah beserta koefisien variasinya dalam satu tempat.</p>
     </div>
+    """, unsafe_allow_html=True)
+    file = st.file_uploader("Unggah file Excel data tanah (.xlsx) untuk memulai", type=["xlsx"],
+                            key="upload_xlsx")
+    if file:
+        st.rerun()  # tampilkan ulang dengan tata letak aplikasi
+    st.markdown("""
     <div class="feat-grid">
       <div class="feat"><div class="n">01</div><h4>Ringkasan</h4>
         <p>Statistik harga, distribusi, tren per tahun, dan sebaran per kecamatan.</p></div>
@@ -290,8 +322,6 @@ if not file:
         <p>Koreksi diskon, waktu, luas, legalitas, lokasi, peruntukan, dan CV.</p></div>
     </div>
     """, unsafe_allow_html=True)
-    st.info("Mulai dengan mengunggah file Excel (.xlsx) melalui panel di sebelah kiri.",
-            icon=":material/upload_file:")
     with st.expander("Format file yang didukung"):
         st.markdown(
             "| Sheet | Isi | Wajib |\n|---|---|---|\n"
@@ -303,6 +333,15 @@ if not file:
             "dengan kolom `Latitude`, `Longitude`, `Harga_Tanah`, `Luas_Tanah`, dan seterusnya."
         )
     st.stop()
+
+if not file:
+    st.rerun()  # file dihapus dari menu → kembali ke halaman awal
+
+if "last_file" in st.session_state and file != st.session_state["last_file"]:
+    for _k in [k for k in st.session_state if k.startswith(("adj_df_", "f_"))]:
+        del st.session_state[_k]
+    st.session_state.pop("peta_sel", None)
+st.session_state["last_file"] = file
 
 # ─── Helpers untuk loading sheet bertranspose ────────────────────────────────
 
@@ -647,7 +686,7 @@ else:
     else:
         _btb_msg = "ℹ️ Tidak ada data pembanding atau kolom Kelas_Bangunan tidak ada"
 
-# ─── Status data di sidebar ──────────────────────────────────────────────────
+# ─── Status data (di menu file pada bilah atas) ──────────────────────────────
 n_prop = int((df["_sumber"] == "Data Properti").sum())   if "_sumber" in df.columns else 0
 n_pemb = int((df["_sumber"] == "Data Pembanding").sum()) if "_sumber" in df.columns else len(df)
 
@@ -661,37 +700,50 @@ if _btb_msg:
     _btb_short = (_btb_msg.split("|")[0].strip().lstrip("✅").strip() if _btb_msg.startswith("✅")
                   else "Koreksi BTB tidak diterapkan")
     _status.append(_status_line(TEAL if _btb_ok else AMBER, _btb_short))
-st.sidebar.markdown("".join(_status), unsafe_allow_html=True)
+status_slot.markdown("".join(_status), unsafe_allow_html=True)
 if _btb_msg and not _btb_ok:
-    with st.sidebar.expander("Detail koreksi BTB"):
-        st.caption(_btb_msg.replace("✅", "").replace("⚠️", "").replace("ℹ️", "").strip())
+    status_slot.caption(_btb_msg.replace("✅", "").replace("⚠️", "").replace("ℹ️", "").strip())
 
-# ─── Filter controls ──────────────────────────────────────────────────────────
-st.sidebar.markdown('<div class="side-label">Filter Data</div>', unsafe_allow_html=True)
-with st.sidebar.form("filter_form", border=False):
-    city_input = st.text_input("Kabupaten/Kota", placeholder="Ketik sebagian nama…")
+# ─── Filter controls (menu Filter di bilah atas) ─────────────────────────────
+available_years = sorted([int(y) for y in df["Tahun_Bersih"].dropna().unique()], reverse=True)
+kec_options = ["Semua Kecamatan"] + sorted(df["Kecamatan"].dropna().astype(str).unique().tolist())
+harga_col = df["Harga_Tanah"].dropna()
+luas_col  = df["Luas_Tanah"].dropna()
+_harga_ok = not harga_col.empty and harga_col.min() < harga_col.max()
+_luas_ok  = not luas_col.empty and luas_col.min() < luas_col.max()
 
-    available_years = sorted([int(y) for y in df["Tahun_Bersih"].dropna().unique()], reverse=True)
-    selected_year = st.selectbox("Tahun data", ["Semua Tahun"] + [str(y) for y in available_years])
+# Hitung filter aktif (dari nilai terakhir yang diterapkan) untuk label tombol
+_ss = st.session_state
+_n_aktif = sum([
+    bool(str(_ss.get("f_city", "")).strip()),
+    _ss.get("f_year", "Semua Tahun") != "Semua Tahun",
+    _ss.get("f_kec", "Semua Kecamatan") != "Semua Kecamatan",
+    _harga_ok and "f_harga" in _ss and tuple(_ss["f_harga"]) != (float(harga_col.min()), float(harga_col.max())),
+    _luas_ok and "f_luas" in _ss and tuple(_ss["f_luas"]) != (float(luas_col.min()), float(luas_col.max())),
+])
+with tb_filter.popover(f"Filter ({_n_aktif})" if _n_aktif else "Filter",
+                       icon=":material/filter_alt:", use_container_width=True):
+    with st.form("filter_form", border=False):
+        city_input = st.text_input("Kabupaten/Kota", placeholder="Ketik sebagian nama…", key="f_city")
+        fc1, fc2 = st.columns(2)
+        selected_year = fc1.selectbox("Tahun data", ["Semua Tahun"] + [str(y) for y in available_years],
+                                      key="f_year")
+        selected_kecamatan = fc2.selectbox("Kecamatan", kec_options, key="f_kec")
 
-    kec_options = ["Semua Kecamatan"] + sorted(df["Kecamatan"].dropna().astype(str).unique().tolist())
-    selected_kecamatan = st.selectbox("Kecamatan", kec_options)
+        price_range = None
+        if _harga_ok:
+            h_min, h_max = float(harga_col.min()), float(harga_col.max())
+            price_range = st.slider("Harga tanah (Rp/m²)", h_min, h_max, (h_min, h_max),
+                                    format="%.0f", key="f_harga")
 
-    harga_col = df["Harga_Tanah"].dropna()
-    price_range = None
-    if not harga_col.empty and harga_col.min() < harga_col.max():
-        h_min, h_max = float(harga_col.min()), float(harga_col.max())
-        price_range = st.slider("Harga tanah (Rp/m²)", h_min, h_max, (h_min, h_max), format="%.0f")
+        luas_range = None
+        if _luas_ok:
+            l_min, l_max = float(luas_col.min()), float(luas_col.max())
+            luas_range = st.slider("Luas tanah (m²)", l_min, l_max, (l_min, l_max),
+                                   format="%.0f", key="f_luas")
 
-    luas_col = df["Luas_Tanah"].dropna()
-    luas_range = None
-    if not luas_col.empty and luas_col.min() < luas_col.max():
-        l_min, l_max = float(luas_col.min()), float(luas_col.max())
-        luas_range = st.slider("Luas tanah (m²)", l_min, l_max, (l_min, l_max), format="%.0f")
-
-    st.form_submit_button("Terapkan Filter", type="primary", use_container_width=True,
-                          icon=":material/filter_alt:")
-st.sidebar.caption("Obyek penilaian selalu ditampilkan, apa pun filternya.")
+        st.form_submit_button("Terapkan Filter", type="primary", use_container_width=True)
+    st.caption("Obyek penilaian selalu ditampilkan, apa pun filternya.")
 
 # ─── Apply filters ────────────────────────────────────────────────────────────
 filtered = df.copy()
