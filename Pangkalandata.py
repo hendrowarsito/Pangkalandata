@@ -272,7 +272,7 @@ def safe_get(row, col, default="-"):
 
 # ─── Bilah atas (selalu terlihat) ────────────────────────────────────────────
 with st.container(key="topbar"):
-    tb_brand, tb_file, tb_filter = st.columns([6, 2.4, 1.3], vertical_alignment="center")
+    tb_brand, tb_file, tb_filter = st.columns([6, 2.6, 1.6], vertical_alignment="center")
 tb_brand.markdown(
     '<div class="brand">'
     + (f'<img class="logo" src="{LOGO_URI}" alt="SRR">' if LOGO_URI else '<div class="logo">SRR</div>')
@@ -695,7 +695,6 @@ if _btb_msg and not _btb_ok:
     status_slot.caption(_btb_msg.replace("✅", "").replace("⚠️", "").replace("ℹ️", "").strip())
 
 # ─── Filter controls (menu Filter di bilah atas) ─────────────────────────────
-available_years = sorted([int(y) for y in df["Tahun_Bersih"].dropna().unique()], reverse=True)
 kec_options = ["Semua Kecamatan"] + sorted(df["Kecamatan"].dropna().astype(str).unique().tolist())
 harga_col = df["Harga_Tanah"].dropna()
 luas_col  = df["Luas_Tanah"].dropna()
@@ -705,8 +704,6 @@ _luas_ok  = not luas_col.empty and luas_col.min() < luas_col.max()
 # Hitung filter aktif (dari nilai terakhir yang diterapkan) untuk label tombol
 _ss = st.session_state
 _n_aktif = sum([
-    bool(str(_ss.get("f_city", "")).strip()),
-    _ss.get("f_year", "Semua Tahun") != "Semua Tahun",
     _ss.get("f_kec", "Semua Kecamatan") != "Semua Kecamatan",
     _harga_ok and "f_harga" in _ss and tuple(_ss["f_harga"]) != (float(harga_col.min()), float(harga_col.max())),
     _luas_ok and "f_luas" in _ss and tuple(_ss["f_luas"]) != (float(luas_col.min()), float(luas_col.max())),
@@ -714,11 +711,7 @@ _n_aktif = sum([
 with tb_filter.popover(f"Filter ({_n_aktif})" if _n_aktif else "Filter",
                        icon=":material/filter_alt:", use_container_width=True):
     with st.form("filter_form", border=False):
-        city_input = st.text_input("Kabupaten/Kota", placeholder="Ketik sebagian nama…", key="f_city")
-        fc1, fc2 = st.columns(2)
-        selected_year = fc1.selectbox("Tahun data", ["Semua Tahun"] + [str(y) for y in available_years],
-                                      key="f_year")
-        selected_kecamatan = fc2.selectbox("Kecamatan", kec_options, key="f_kec")
+        selected_kecamatan = st.selectbox("Kecamatan", kec_options, key="f_kec")
 
         price_range = None
         if _harga_ok:
@@ -740,18 +733,6 @@ filtered = df.copy()
 
 # Identifikasi baris Obyek Penilaian — selalu dipertahankan di semua filter
 _is_obyek = filtered["Nomor"].astype(str).str.strip().str.lower().str.contains("obyek", na=False)
-
-if city_input.strip():
-    _city_ok = filtered["Kota"].astype(str).str.strip().str.lower().str.contains(
-        city_input.strip().lower(), na=False
-    )
-    filtered = filtered[_city_ok | _is_obyek]
-    _is_obyek = filtered["Nomor"].astype(str).str.strip().str.lower().str.contains("obyek", na=False)
-
-if selected_year != "Semua Tahun":
-    _year_ok = filtered["Tahun_Bersih"] == int(selected_year)
-    filtered = filtered[_year_ok | _is_obyek]
-    _is_obyek = filtered["Nomor"].astype(str).str.strip().str.lower().str.contains("obyek", na=False)
 
 if selected_kecamatan != "Semua Kecamatan":
     _kec_ok = filtered["Kecamatan"].astype(str) == selected_kecamatan
@@ -787,14 +768,12 @@ else:
     filtered = filtered.copy()
     filtered["_outlier"] = False
 
-city_label = city_input.strip() or "Semua Kota"
+file_stem = Path(file.name).stem  # untuk nama file unduhan
 
 # ─── Header ───────────────────────────────────────────────────────────────────
 _n_comp_f = int((~filtered["Nomor"].astype(str).str.lower().str.contains("obyek", na=False)).sum())
 _chips = [
     f"<span class='chip'><b>{_n_comp_f}</b> data pembanding</span>",
-    f"<span class='chip'>Kota: <b>{city_label}</b></span>",
-    f"<span class='chip'>Tahun: <b>{selected_year.replace('Semua Tahun', 'Semua')}</b></span>",
 ]
 if selected_kecamatan != "Semua Kecamatan":
     _chips.append(f"<span class='chip'>Kec.: <b>{selected_kecamatan}</b></span>")
@@ -1212,7 +1191,7 @@ with tab_tabel:
         label="Unduh Excel",
         icon=":material/download:",
         data=to_excel_bytes(disp_df),
-        file_name=f"data_tanah_{city_label}_{selected_year}.xlsx",
+        file_name=f"data_{file_stem}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         use_container_width=True,
         disabled=disp_df.empty,
@@ -1577,6 +1556,6 @@ with tab_analisa:
                 label="Unduh hasil analisa (Excel)",
                 icon=":material/download:",
                 data=to_excel_bytes(tbl),
-                file_name=f"analisa_perbandingan_{city_label}_{selected_year}.xlsx",
+                file_name=f"analisa_perbandingan_{file_stem}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             )
