@@ -14,25 +14,162 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
     page_title="Pangkalan Data Tanah KJPP SRR",
-    page_icon="🏡"
+    page_icon=":material/landscape:"
 )
 
-st.markdown("""
+# ─── Palet & gaya global ─────────────────────────────────────────────────────
+NAVY    = "#1F4E79"
+NAVY_DK = "#0F2A44"
+TEAL    = "#2A9D8F"
+AMBER   = "#E9A23B"
+RED     = "#C8553D"
+SLATE   = "#64748B"
+LINE    = "#E2E8F0"
+
+st.markdown(f"""
 <style>
-.block-container { padding-top: 1rem; }
-.stMetric { background: #f8f9fa; border-radius: 8px; padding: 0.5rem; border-left: 4px solid #667eea; }
-.legend-box { position:fixed; bottom:30px; left:30px; z-index:1000; background:white;
-              padding:10px 14px; border-radius:8px; border:2px solid #ccc;
-              font-size:12px; font-family:sans-serif; box-shadow: 2px 2px 6px rgba(0,0,0,0.2); }
+.block-container {{ padding-top: 2.2rem; padding-bottom: 3rem; max-width: 1500px; }}
+h1, h2, h3, h4 {{ letter-spacing: -0.01em; }}
+[data-testid="stSidebar"] {{ border-right: 1px solid {LINE}; }}
+[data-testid="stSidebar"] .block-container {{ padding-top: 1.5rem; }}
+
+/* Header aplikasi */
+.app-header {{ display:flex; align-items:flex-end; justify-content:space-between;
+               gap:1rem; flex-wrap:wrap; padding-bottom:.9rem; margin-bottom:.4rem;
+               border-bottom:1px solid {LINE}; }}
+.app-header h1 {{ font-size:1.55rem; font-weight:700; color:{NAVY_DK}; margin:0; padding:0; }}
+.app-header .sub {{ color:{SLATE}; font-size:.9rem; margin-top:.15rem; }}
+.chips {{ display:flex; gap:.4rem; flex-wrap:wrap; }}
+.chip {{ background:#F1F5F9; border:1px solid {LINE}; color:#334155; border-radius:999px;
+         padding:.18rem .7rem; font-size:.78rem; white-space:nowrap; }}
+.chip b {{ color:{NAVY_DK}; font-weight:600; }}
+
+/* Kartu KPI */
+.kpi-grid {{ display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr));
+             gap:.75rem; margin:.4rem 0 1rem; }}
+.kpi {{ background:#fff; border:1px solid {LINE}; border-radius:10px; padding:.85rem 1rem; }}
+.kpi .lbl {{ color:{SLATE}; font-size:.72rem; font-weight:600; text-transform:uppercase;
+             letter-spacing:.05em; }}
+.kpi .val {{ color:{NAVY_DK}; font-size:1.3rem; font-weight:700; margin-top:.25rem;
+             font-variant-numeric:tabular-nums; white-space:nowrap; }}
+.kpi .val small {{ font-size:.75rem; font-weight:500; color:{SLATE}; margin-left:.15rem; }}
+.kpi .note {{ color:{SLATE}; font-size:.75rem; margin-top:.15rem; }}
+.kpi.accent {{ background:{NAVY}; border-color:{NAVY}; }}
+.kpi.accent .lbl, .kpi.accent .note, .kpi.accent .val small {{ color:#C9D8E8; }}
+.kpi.accent .val {{ color:#fff; }}
+
+/* Badge status */
+.badge {{ display:inline-block; border-radius:999px; padding:.12rem .6rem; font-size:.72rem;
+          font-weight:600; }}
+.badge.ok   {{ background:#E6F4F1; color:#1E7A6F; }}
+.badge.warn {{ background:#FDF3E1; color:#9A6412; }}
+.badge.bad  {{ background:#FBEAE6; color:#A23F2B; }}
+
+/* Judul bagian & langkah */
+.section-title {{ font-size:1rem; font-weight:650; color:{NAVY_DK}; margin:0 0 .5rem; }}
+.step {{ display:inline-flex; align-items:center; justify-content:center; width:1.4rem;
+         height:1.4rem; border-radius:50%; background:{NAVY}; color:#fff; font-size:.75rem;
+         font-weight:700; margin-right:.45rem; }}
+
+/* Daftar label–nilai */
+.kv {{ display:grid; grid-template-columns:auto 1fr; gap:.3rem .9rem; font-size:.86rem; }}
+.kv dt {{ color:{SLATE}; }}
+.kv dd {{ margin:0; color:#1E293B; font-weight:500; }}
+
+/* Sidebar */
+.brand {{ display:flex; gap:.65rem; align-items:center; margin-bottom:.4rem; }}
+.brand .logo {{ width:38px; height:38px; border-radius:9px; background:{NAVY}; color:#fff;
+                display:flex; align-items:center; justify-content:center; font-weight:800;
+                font-size:.9rem; letter-spacing:.02em; }}
+.brand .t1 {{ font-weight:700; color:{NAVY_DK}; font-size:.98rem; line-height:1.15; }}
+.brand .t2 {{ color:{SLATE}; font-size:.74rem; }}
+.side-label {{ color:{SLATE}; font-size:.72rem; font-weight:700; text-transform:uppercase;
+               letter-spacing:.06em; margin:1.1rem 0 .4rem; }}
+.status-line {{ font-size:.8rem; color:#334155; display:flex; gap:.45rem; align-items:baseline;
+                margin:.2rem 0; }}
+.dot {{ width:.5rem; height:.5rem; border-radius:50%; display:inline-block; flex-shrink:0; }}
+
+/* Halaman awal */
+.hero {{ padding:2.2rem 0 1.2rem; }}
+.hero .eyebrow {{ color:{TEAL}; font-weight:700; font-size:.78rem; letter-spacing:.08em;
+                  text-transform:uppercase; }}
+.hero h1 {{ font-size:2.1rem; color:{NAVY_DK}; margin:.3rem 0 .4rem; font-weight:750; }}
+.hero p {{ color:{SLATE}; font-size:1.02rem; max-width:680px; }}
+.feat-grid {{ display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:.9rem;
+              margin:1rem 0 1.5rem; }}
+.feat {{ border:1px solid {LINE}; border-radius:12px; padding:1.1rem 1.15rem; background:#fff; }}
+.feat .n {{ color:{TEAL}; font-weight:700; font-size:.8rem; }}
+.feat h4 {{ margin:.3rem 0 .3rem; font-size:1rem; color:{NAVY_DK}; padding:0; }}
+.feat p {{ margin:0; color:{SLATE}; font-size:.86rem; line-height:1.45; }}
+
+/* Tab */
+.stTabs [data-baseweb="tab-list"] {{ gap:1.4rem; border-bottom:1px solid {LINE}; }}
+.stTabs [data-baseweb="tab"] {{ padding:.6rem 0; font-weight:600; }}
 </style>
 """, unsafe_allow_html=True)
 
 YEAR_COLORS = {
-    "gte_2025": "green",
-    "gte_2024": "blue",
-    "gte_2023": "orange",
-    "lt_2023":  "red",
-    "subject":  "purple",
+    "gte_2025": TEAL,
+    "gte_2024": NAVY,
+    "gte_2023": AMBER,
+    "lt_2023":  RED,
+    "subject":  NAVY_DK,
+}
+
+PLOT_FONT = dict(family="Source Sans Pro, Segoe UI, sans-serif", size=12, color="#334155")
+PLOT_CFG  = {"displayModeBar": False}
+PLOT_SEQ  = [NAVY, TEAL, AMBER, RED, "#7A8CA5", "#8E6C8A", "#5B8C5A"]
+
+def style_fig(fig, title=None, height=340):
+    """Gaya grafik seragam: latar putih, grid tipis, judul rata kiri."""
+    fig.update_layout(
+        title=dict(text=title, x=0, xanchor="left", y=0.97, yref="container", yanchor="top",
+                   font=dict(size=14, color=NAVY_DK)) if title else None,
+        template="simple_white", font=PLOT_FONT, height=height,
+        margin=dict(t=76 if title else 24, b=8, l=8, r=8),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0, title=None),
+        hoverlabel=dict(bgcolor="white", font_size=12),
+        colorway=PLOT_SEQ,
+    )
+    fig.update_xaxes(showgrid=False, linecolor=LINE, ticks="", title_font=dict(size=12, color=SLATE))
+    fig.update_yaxes(showgrid=True, gridcolor="#EEF2F6", linecolor=LINE, ticks="",
+                     title_font=dict(size=12, color=SLATE), separatethousands=True)
+    return fig
+
+def kpi_cards(items):
+    """items: list of (label, value, note, accent) → baris kartu KPI."""
+    html = "".join(
+        f'<div class="kpi{" accent" if accent else ""}"><div class="lbl">{lbl}</div>'
+        f'<div class="val">{val}</div>'
+        + (f'<div class="note">{note}</div>' if note else "") + "</div>"
+        for lbl, val, note, accent in items
+    )
+    st.markdown(f'<div class="kpi-grid">{html}</div>', unsafe_allow_html=True)
+
+def section_title(text, step=None):
+    num = f'<span class="step">{step}</span>' if step else ""
+    st.markdown(f'<div class="section-title">{num}{text}</div>', unsafe_allow_html=True)
+
+def rp(value, unit=True):
+    """Format Rupiah untuk kartu: 'Rp 1.234.567' dengan satuan /m² kecil."""
+    try:
+        s = f"Rp {float(value):,.0f}".replace(",", ".")
+    except Exception:
+        return "—"
+    return s + ("<small>/m²</small>" if unit else "")
+
+# Label tampilan untuk kolom internal
+COL_LABELS = {
+    "Nomor": "No. Data", "Jenis_Data": "Jenis Data", "Tanggal_Data": "Tgl. Data",
+    "Harga_Total": "Harga Total (Rp)", "Harga_Tanah": "Harga Tanah (Rp/m²)",
+    "Luas_Tanah": "Luas Tanah (m²)", "Luas_Bangunan": "Luas Bangunan (m²)",
+    "Kondisi_Bangunan": "Kondisi Bangunan (%)", "Kelas_Bangunan": "Kelas Bangunan",
+    "Jenis_Properti": "Jenis Properti", "Sumber_Data": "Sumber Data", "Telp": "Telepon",
+    "Telp_Konfirmasi": "Telp. Konfirmasi", "Kota": "Kabupaten/Kota", "Kelurahan": "Desa/Kelurahan",
+    "Kode_Inspeksi": "Kode Inspeksi", "Tanggal_Inspeksi": "Tgl. Inspeksi",
+    "Pemberi_Tugas": "Pemberi Tugas", "Foto_Jalan": "Foto Jalan", "Foto_Dalam": "Foto Dalam",
+    "Foto_Samping_Kanan": "Foto Samping Kanan", "Foto_Samping_Kiri": "Foto Samping Kiri",
+    "Gambar_Situasi": "Gambar Situasi", "Tahun_Bersih": "Tahun",
 }
 
 def generate_streetview_url(lat, lon):
@@ -68,35 +205,6 @@ def gdrive_thumbnail(url, width=300):
     # thumbnail = API resmi Google Drive (backup)
     thumb = f"https://drive.google.com/thumbnail?id={fid}&sz=w{width}"
     return lh3, thumb
-
-def build_foto_html(foto_url):
-    """Thumbnail inline + tombol buka tab baru."""
-    has_link = bool(foto_url) and str(foto_url).strip() not in ("", "#", "nan", "None", "-")
-    if not has_link:
-        return ""
-
-    foto_url = str(foto_url).strip()
-    lh3, thumb = gdrive_thumbnail(foto_url, width=280)
-
-    if lh3:
-        # Coba lh3 dulu; jika gagal, otomatis fallback ke thumbnail API via onerror
-        return f"""
-        <div style="margin:6px 0;text-align:center">
-          <img src="{lh3}"
-               style="width:100%;max-width:280px;border-radius:6px;
-                      border:1px solid #ddd;display:block;margin:0 auto 4px"
-               referrerpolicy="no-referrer"
-               onerror="this.src='{thumb}';this.onerror=null;"
-          >
-          <a href="{foto_url}" target="_blank"
-             style="font-size:11px;color:#2980b9;text-decoration:none">
-            &#128247; Buka foto selengkapnya &#8599;
-          </a>
-        </div>"""
-
-    # Bukan URL Google Drive — tampilkan sebagai link biasa
-    return (f'<a href="{foto_url}" target="_blank" '
-            f'style="font-size:12px">&#128247; Lihat Foto</a><br>')
 
 def format_currency(value):
     try:
@@ -147,33 +255,53 @@ def safe_get(row, col, default="-"):
     return default if pd.isna(val) else val
 
 # ─── Sidebar ─────────────────────────────────────────────────────────────────
-st.sidebar.markdown("## 🏡 Pangkalan Data Tanah\n**KJPP Suwendho Rinaldy dan Rekan**")
-st.sidebar.divider()
-st.sidebar.header("🔧 Filter Data")
-file = st.sidebar.file_uploader("📂 Unggah file Excel data tanah", type=["xlsx"])
+st.sidebar.markdown(
+    '<div class="brand"><div class="logo">SRR</div><div>'
+    '<div class="t1">Pangkalan Data Tanah</div>'
+    '<div class="t2">KJPP Suwendho Rinaldy dan Rekan</div></div></div>',
+    unsafe_allow_html=True,
+)
+st.sidebar.markdown('<div class="side-label">Sumber Data</div>', unsafe_allow_html=True)
+file = st.sidebar.file_uploader("Unggah file Excel data tanah", type=["xlsx"],
+                                label_visibility="collapsed")
 
 if file and "last_file" in st.session_state and file != st.session_state["last_file"]:
-    st.session_state["tampilkan"] = False
     for _k in [k for k in st.session_state if k.startswith("adj_df_")]:
         del st.session_state[_k]
+    st.session_state.pop("peta_sel", None)
 st.session_state["last_file"] = file
 
 if not file:
     st.markdown("""
-    ## 🏡 Pangkalan Data Penilaian Tanah
-    ### KJPP Suwendho Rinaldy dan Rekan
-
-    Aplikasi ini mendukung proses **reviu penilaian tanah** dengan fitur:
-
-    | Fitur | Keterangan |
-    |---|---|
-    | 📊 Dashboard Analitik | Statistik ringkasan, distribusi harga, tren per tahun |
-    | 🗺️ Peta Interaktif | Semua data pembanding terpetakan + heatmap harga |
-    | 📋 Tabel Data | Filter lanjutan, deteksi outlier, ekspor Excel |
-    | 🔄 Analisa Perbandingan | Koreksi waktu & luas, hitung CV, indikasi nilai |
-
-    **Mulai dengan mengunggah file Excel data tanah di sidebar kiri.**
-    """)
+    <div class="hero">
+      <div class="eyebrow">Reviu Penilaian Tanah</div>
+      <h1>Pangkalan Data Penilaian Tanah</h1>
+      <p>Telaah data pembanding, petakan lokasi terhadap obyek penilaian, dan hitung
+         indikasi nilai tanah beserta koefisien variasinya dalam satu tempat.</p>
+    </div>
+    <div class="feat-grid">
+      <div class="feat"><div class="n">01</div><h4>Ringkasan</h4>
+        <p>Statistik harga, distribusi, tren per tahun, dan sebaran per kecamatan.</p></div>
+      <div class="feat"><div class="n">02</div><h4>Peta Lokasi</h4>
+        <p>Obyek dan data pembanding di peta, jarak, foto, serta heatmap harga.</p></div>
+      <div class="feat"><div class="n">03</div><h4>Tabel Data</h4>
+        <p>Penelusuran data lengkap, deteksi outlier, dan ekspor ke Excel.</p></div>
+      <div class="feat"><div class="n">04</div><h4>Analisa Perbandingan</h4>
+        <p>Koreksi diskon, waktu, luas, legalitas, lokasi, peruntukan, dan CV.</p></div>
+    </div>
+    """, unsafe_allow_html=True)
+    st.info("Mulai dengan mengunggah file Excel (.xlsx) melalui panel di sebelah kiri.",
+            icon=":material/upload_file:")
+    with st.expander("Format file yang didukung"):
+        st.markdown(
+            "| Sheet | Isi | Wajib |\n|---|---|---|\n"
+            "| **Data Properti** | Obyek penilaian (field per baris, record per kolom) | Ya* |\n"
+            "| **Data Pembanding** | Data pasar pembanding (field per baris, record per kolom) | Ya* |\n"
+            "| **Data Bangunan** | Rincian bangunan obyek per kode inspeksi | Opsional |\n"
+            "| **Data BTB** | Biaya teknis bangunan per kelas (kolom *Pembulatan*) | Opsional |\n\n"
+            "\\* Jika kedua sheet tidak ada, sheet pertama dibaca sebagai tabel datar "
+            "dengan kolom `Latitude`, `Longitude`, `Harga_Tanah`, `Luas_Tanah`, dan seterusnya."
+        )
     st.stop()
 
 # ─── Helpers untuk loading sheet bertranspose ────────────────────────────────
@@ -519,56 +647,51 @@ else:
     else:
         _btb_msg = "ℹ️ Tidak ada data pembanding atau kolom Kelas_Bangunan tidak ada"
 
-# Tunjukkan format yang terdeteksi
-_fmt = df["_format"].iloc[0] if "_fmt" not in st.session_state and not df.empty and "_format" in df.columns else ""
-if _fmt == "multi-sheet":
-    n_prop = int((df["_sumber"] == "Data Properti").sum())   if "_sumber" in df.columns else 0
-    n_pemb = int((df["_sumber"] == "Data Pembanding").sum()) if "_sumber" in df.columns else 0
-    st.sidebar.success(f"✅ Format multi-sheet: {n_prop} Obyek Penilaian + {n_pemb} Data Pembanding")
+# ─── Status data di sidebar ──────────────────────────────────────────────────
+n_prop = int((df["_sumber"] == "Data Properti").sum())   if "_sumber" in df.columns else 0
+n_pemb = int((df["_sumber"] == "Data Pembanding").sum()) if "_sumber" in df.columns else len(df)
 
+def _status_line(color, text):
+    return (f'<div class="status-line"><span class="dot" style="background:{color}"></span>'
+            f'<span>{text}</span></div>')
+
+_status = [_status_line(TEAL, f"<b>{n_prop}</b> obyek penilaian · <b>{n_pemb}</b> data pembanding")]
+_btb_ok = _btb_msg.startswith("✅") and "⚠️" not in _btb_msg
 if _btb_msg:
-    if _btb_msg.startswith("✅"):
-        st.sidebar.success(_btb_msg)
-    elif _btb_msg.startswith("ℹ️"):
-        st.sidebar.info(_btb_msg)
-    else:
-        st.sidebar.warning(_btb_msg)
+    _btb_short = (_btb_msg.split("|")[0].strip().lstrip("✅").strip() if _btb_msg.startswith("✅")
+                  else "Koreksi BTB tidak diterapkan")
+    _status.append(_status_line(TEAL if _btb_ok else AMBER, _btb_short))
+st.sidebar.markdown("".join(_status), unsafe_allow_html=True)
+if _btb_msg and not _btb_ok:
+    with st.sidebar.expander("Detail koreksi BTB"):
+        st.caption(_btb_msg.replace("✅", "").replace("⚠️", "").replace("ℹ️", "").strip())
 
 # ─── Filter controls ──────────────────────────────────────────────────────────
-city_input = st.sidebar.text_input("🔍 Cari Kota/Kabupaten (sebagian nama OK):")
+st.sidebar.markdown('<div class="side-label">Filter Data</div>', unsafe_allow_html=True)
+with st.sidebar.form("filter_form", border=False):
+    city_input = st.text_input("Kabupaten/Kota", placeholder="Ketik sebagian nama…")
 
-available_years = sorted([int(y) for y in df["Tahun_Bersih"].dropna().unique()], reverse=True)
-selected_year = st.sidebar.selectbox("📅 Pilih Tahun Data:", ["Semua Tahun"] + [str(y) for y in available_years])
+    available_years = sorted([int(y) for y in df["Tahun_Bersih"].dropna().unique()], reverse=True)
+    selected_year = st.selectbox("Tahun data", ["Semua Tahun"] + [str(y) for y in available_years])
 
-kec_options = ["Semua Kecamatan"] + sorted(df["Kecamatan"].dropna().astype(str).unique().tolist())
-selected_kecamatan = st.sidebar.selectbox("🏘️ Pilih Kecamatan:", kec_options)
+    kec_options = ["Semua Kecamatan"] + sorted(df["Kecamatan"].dropna().astype(str).unique().tolist())
+    selected_kecamatan = st.selectbox("Kecamatan", kec_options)
 
-harga_col = df["Harga_Tanah"].dropna()
-if not harga_col.empty:
-    h_min, h_max = float(harga_col.min()), float(harga_col.max())
-    price_range = st.sidebar.slider("💰 Rentang Harga (Rp/m²):", h_min, h_max, (h_min, h_max), format="%.0f")
-else:
+    harga_col = df["Harga_Tanah"].dropna()
     price_range = None
+    if not harga_col.empty and harga_col.min() < harga_col.max():
+        h_min, h_max = float(harga_col.min()), float(harga_col.max())
+        price_range = st.slider("Harga tanah (Rp/m²)", h_min, h_max, (h_min, h_max), format="%.0f")
 
-luas_col = df["Luas_Tanah"].dropna()
-if not luas_col.empty:
-    l_min, l_max = float(luas_col.min()), float(luas_col.max())
-    luas_range = st.sidebar.slider("📐 Rentang Luas Tanah (m²):", l_min, l_max, (l_min, l_max), format="%.0f")
-else:
+    luas_col = df["Luas_Tanah"].dropna()
     luas_range = None
+    if not luas_col.empty and luas_col.min() < luas_col.max():
+        l_min, l_max = float(luas_col.min()), float(luas_col.max())
+        luas_range = st.slider("Luas tanah (m²)", l_min, l_max, (l_min, l_max), format="%.0f")
 
-st.sidebar.divider()
-st.sidebar.markdown("**Opsi Peta:**")
-show_heatmap  = st.sidebar.checkbox("🌡️ Heatmap Harga", value=False)
-
-if "tampilkan" not in st.session_state:
-    st.session_state["tampilkan"] = False
-if st.sidebar.button("🔍 Tampilkan Data", use_container_width=True, type="primary"):
-    st.session_state["tampilkan"] = True
-
-if not st.session_state["tampilkan"]:
-    st.sidebar.info("Tekan tombol di atas untuk melihat hasil.")
-    st.stop()
+    st.form_submit_button("Terapkan Filter", type="primary", use_container_width=True,
+                          icon=":material/filter_alt:")
+st.sidebar.caption("Obyek penilaian selalu ditampilkan, apa pun filternya.")
 
 # ─── Apply filters ────────────────────────────────────────────────────────────
 filtered = df.copy()
@@ -623,71 +746,96 @@ else:
     filtered["_outlier"] = False
 
 city_label = city_input.strip() or "Semua Kota"
-st.markdown(f"<p style='font-size:13px;color:#555;margin:0 0 6px'>Hasil Filter: <b>{len(filtered)} data</b> — Kota: <i>{city_label}</i> | Tahun: <i>{selected_year}</i></p>", unsafe_allow_html=True)
+
+# ─── Header ───────────────────────────────────────────────────────────────────
+_n_comp_f = int((~filtered["Nomor"].astype(str).str.lower().str.contains("obyek", na=False)).sum())
+_chips = [
+    f"<span class='chip'><b>{_n_comp_f}</b> data pembanding</span>",
+    f"<span class='chip'>Kota: <b>{city_label}</b></span>",
+    f"<span class='chip'>Tahun: <b>{selected_year.replace('Semua Tahun', 'Semua')}</b></span>",
+]
+if selected_kecamatan != "Semua Kecamatan":
+    _chips.append(f"<span class='chip'>Kec.: <b>{selected_kecamatan}</b></span>")
+st.markdown(
+    f'<div class="app-header"><div><h1>Reviu Penilaian Tanah</h1>'
+    f'<div class="sub">{file.name}</div></div>'
+    f'<div class="chips">{"".join(_chips)}</div></div>',
+    unsafe_allow_html=True,
+)
+
+if filtered.empty:
+    st.warning("Tidak ada data yang sesuai dengan filter yang dipilih.", icon=":material/search_off:")
+    st.stop()
 
 # ─── Tabs ─────────────────────────────────────────────────────────────────────
 tab_dashboard, tab_peta, tab_tabel, tab_analisa = st.tabs([
-    "📊 Dashboard Analitik",
-    "🗺️ Peta Lokasi",
-    "📋 Tabel Data",
-    "🔄 Analisa Perbandingan",
+    ":material/insights: Ringkasan",
+    ":material/map: Peta Lokasi",
+    ":material/table_rows: Tabel Data",
+    ":material/calculate: Analisa Perbandingan",
 ])
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# TAB 1 — DASHBOARD
+# TAB 1 — RINGKASAN
 # ═══════════════════════════════════════════════════════════════════════════════
 with tab_dashboard:
-    if filtered.empty:
-        st.warning("Tidak ada data yang sesuai dengan filter yang dipilih.")
-        st.stop()
-
     prices = filtered["Harga_Tanah"].dropna()
     outlier_count = int(filtered["_outlier"].sum())
 
-    # KPI row
-    k1, k2, k3, k4, k5 = st.columns(5)
-    k1.metric("📦 Total Data",       f"{len(filtered):,}")
-    k2.metric("💰 Rata-rata",         format_currency(prices.mean()) if not prices.empty else "N/A")
-    k3.metric("📉 Minimum",           format_currency(prices.min())  if not prices.empty else "N/A")
-    k4.metric("📈 Maksimum",          format_currency(prices.max())  if not prices.empty else "N/A")
-    k5.metric("📊 Median",            format_currency(prices.median()) if not prices.empty else "N/A")
+    def _rp_or_na(v):
+        return rp(v) if not prices.empty else "—"
+    _cv_mkt = prices.std() / prices.mean() * 100 if len(prices) > 1 and prices.mean() else None
+    kpi_cards([
+        ("Rata-rata harga", _rp_or_na(prices.mean()), f"{len(prices)} data berharga", True),
+        ("Median",          _rp_or_na(prices.median()), None, False),
+        ("Minimum",         _rp_or_na(prices.min()), None, False),
+        ("Maksimum",        _rp_or_na(prices.max()), None, False),
+        ("Sebaran (CV)",    f"{_cv_mkt:.1f}%" if _cv_mkt is not None else "—",
+                            f"{outlier_count} outlier (IQR 1,5×)" if outlier_count else "Tanpa outlier", False),
+    ])
 
     if outlier_count:
-        st.warning(
-            f"⚠️ **{outlier_count} data outlier** terdeteksi (metode IQR 1.5×). "
-            "Detail tersedia di tab **Tabel Data**."
-        )
+        st.caption(f":material/warning: {outlier_count} data terdeteksi sebagai outlier — "
+                   "rinciannya tersedia di tab **Tabel Data**.")
 
-    st.divider()
-    col_l, col_r = st.columns(2)
+    col_l, col_r = st.columns(2, gap="medium")
 
     with col_l:
         # Distribusi harga
-        if not prices.empty:
-            fig_hist = px.histogram(
-                filtered[filtered["Harga_Tanah"].notna()],
-                x="Harga_Tanah", nbins=25,
-                title="Distribusi Harga Tanah (Rp/m²)",
-                labels={"Harga_Tanah": "Harga (Rp/m²)", "count": "Jumlah"},
-                color_discrete_sequence=["#667eea"],
-            )
-            fig_hist.update_layout(showlegend=False, margin=dict(t=40, b=20))
-            st.plotly_chart(fig_hist, use_container_width=True)
+        with st.container(border=True):
+            if not prices.empty:
+                fig_hist = px.histogram(
+                    filtered[filtered["Harga_Tanah"].notna()],
+                    x="Harga_Tanah", nbins=20,
+                    labels={"Harga_Tanah": "Harga (Rp/m²)"},
+                    color_discrete_sequence=[NAVY],
+                )
+                fig_hist.update_traces(marker_line_color="white", marker_line_width=1)
+                fig_hist.update_layout(showlegend=False, bargap=0.05, yaxis_title="Jumlah data")
+                st.plotly_chart(style_fig(fig_hist, "Distribusi harga tanah"), use_container_width=True, config=PLOT_CFG)
+            else:
+                st.caption("Belum ada data harga.")
 
         # Scatter harga vs luas
         scatter_df = filtered[filtered["Harga_Tanah"].notna() & filtered["Luas_Tanah"].notna()].copy()
-        scatter_df["Tahun_Label"] = scatter_df["Tahun_Bersih"].astype(str)
         if not scatter_df.empty:
-            fig_scatter = px.scatter(
-                scatter_df, x="Luas_Tanah", y="Harga_Tanah",
-                color="Tahun_Label",
-                hover_data=["Nomor", "Alamat", "Kecamatan"],
-                title="Harga vs Luas Tanah",
-                labels={"Luas_Tanah": "Luas Tanah (m²)", "Harga_Tanah": "Harga (Rp/m²)", "Tahun_Label": "Tahun"},
-                trendline="ols",
-            )
-            fig_scatter.update_layout(margin=dict(t=40, b=20))
-            st.plotly_chart(fig_scatter, use_container_width=True)
+            scatter_df["Tahun_Label"] = scatter_df["Tahun_Bersih"].astype("Int64").astype(str)
+            with st.container(border=True):
+                fig_scatter = px.scatter(
+                    scatter_df.sort_values("Tahun_Label"), x="Luas_Tanah", y="Harga_Tanah",
+                    color="Tahun_Label",
+                    hover_data=["Nomor", "Alamat", "Kecamatan"],
+                    labels={"Luas_Tanah": "Luas tanah (m²)", "Harga_Tanah": "Harga (Rp/m²)",
+                            "Tahun_Label": "Tahun"},
+                    trendline="ols", trendline_scope="overall",
+                    trendline_color_override=SLATE,
+                    color_discrete_sequence=PLOT_SEQ,
+                )
+                fig_scatter.update_traces(marker=dict(size=9, line=dict(width=1, color="white")),
+                                          selector=dict(mode="markers"))
+                fig_scatter.update_traces(name="Tren (OLS)", selector=dict(mode="lines"))
+                st.plotly_chart(style_fig(fig_scatter, "Harga terhadap luas tanah"),
+                                use_container_width=True, config=PLOT_CFG)
 
     with col_r:
         # Tren harga per tahun
@@ -700,588 +848,345 @@ with tab_dashboard:
             .sort_values("Tahun")
         )
         if not by_year.empty:
-            fig_trend = go.Figure()
-            fig_trend.add_trace(go.Scatter(
-                x=by_year["Tahun"], y=by_year["rata_rata"],
-                mode="lines+markers", name="Rata-rata",
-                line=dict(color="#667eea", width=3), marker=dict(size=8),
-            ))
-            fig_trend.add_trace(go.Scatter(
-                x=by_year["Tahun"], y=by_year["maksimum"],
-                mode="lines", name="Maksimum", line=dict(color="#2ecc71", dash="dash"),
-            ))
-            fig_trend.add_trace(go.Scatter(
-                x=by_year["Tahun"], y=by_year["minimum"],
-                mode="lines", name="Minimum", line=dict(color="#e74c3c", dash="dash"),
-            ))
-            fig_trend.update_layout(
-                title="Tren Harga per Tahun",
-                xaxis_title="Tahun", yaxis_title="Harga (Rp/m²)",
-                hovermode="x unified", margin=dict(t=40, b=20),
-            )
-            st.plotly_chart(fig_trend, use_container_width=True)
+            with st.container(border=True):
+                fig_trend = go.Figure()
+                fig_trend.add_trace(go.Scatter(
+                    x=by_year["Tahun"], y=by_year["maksimum"], mode="lines", name="Maksimum",
+                    line=dict(width=0), showlegend=False, hoverinfo="skip",
+                ))
+                fig_trend.add_trace(go.Scatter(
+                    x=by_year["Tahun"], y=by_year["minimum"], mode="lines", name="Rentang min–maks",
+                    line=dict(width=0), fill="tonexty", fillcolor="rgba(31,78,121,0.10)",
+                ))
+                fig_trend.add_trace(go.Scatter(
+                    x=by_year["Tahun"], y=by_year["rata_rata"],
+                    mode="lines+markers", name="Rata-rata",
+                    line=dict(color=NAVY, width=2.5), marker=dict(size=7),
+                    customdata=by_year[["minimum", "maksimum", "jumlah"]],
+                    hovertemplate="Rata-rata: Rp %{y:,.0f}<br>Min: Rp %{customdata[0]:,.0f}"
+                                  "<br>Maks: Rp %{customdata[1]:,.0f}<br>%{customdata[2]} data<extra></extra>",
+                ))
+                fig_trend.update_layout(xaxis_title="Tahun", yaxis_title="Harga (Rp/m²)",
+                                        hovermode="x unified")
+                fig_trend.update_xaxes(dtick=1, tickformat="d")
+                st.plotly_chart(style_fig(fig_trend, "Tren harga per tahun"), use_container_width=True, config=PLOT_CFG)
 
         # Rata-rata harga per kecamatan
         by_kec = (
             filtered.groupby("Kecamatan")["Harga_Tanah"]
-            .mean()
+            .agg(["mean", "count"])
             .dropna()
-            .sort_values(ascending=True)
+            .sort_values("mean", ascending=True)
             .reset_index()
         )
         if not by_kec.empty:
-            fig_kec = px.bar(
-                by_kec, x="Harga_Tanah", y="Kecamatan", orientation="h",
-                title="Rata-rata Harga per Kecamatan",
-                labels={"Harga_Tanah": "Rata-rata Harga (Rp/m²)", "Kecamatan": ""},
-                color="Harga_Tanah", color_continuous_scale="Viridis",
-            )
-            fig_kec.update_layout(
-                showlegend=False, coloraxis_showscale=False, margin=dict(t=40, b=20)
-            )
-            st.plotly_chart(fig_kec, use_container_width=True)
+            with st.container(border=True):
+                fig_kec = go.Figure(go.Bar(
+                    x=by_kec["mean"], y=by_kec["Kecamatan"], orientation="h",
+                    marker_color=NAVY, customdata=by_kec["count"],
+                    hovertemplate="%{y}: Rp %{x:,.0f}/m² (%{customdata} data)<extra></extra>",
+                ))
+                fig_kec.update_layout(xaxis_title="Rata-rata harga (Rp/m²)", yaxis_title=None,
+                                      bargap=0.35)
+                style_fig(fig_kec, "Rata-rata harga per kecamatan",
+                          height=max(340, 60 + 28 * len(by_kec)))
+                fig_kec.update_xaxes(showgrid=True, gridcolor="#EEF2F6", separatethousands=True)
+                fig_kec.update_yaxes(showgrid=False)
+                st.plotly_chart(fig_kec, use_container_width=True, config=PLOT_CFG)
 
     # Ringkasan statistik
-    st.subheader("📊 Ringkasan Statistik")
     num_cols = [c for c in ["Harga_Tanah", "Luas_Tanah", "Luas_Bangunan"] if c in filtered.columns]
     if num_cols:
-        stats = filtered[num_cols].describe()
-        stats.index = ["Jumlah", "Rata-rata", "Std Deviasi", "Minimum",
-                       "Kuartil-1", "Median", "Kuartil-3", "Maksimum"]
-        st.dataframe(stats.style.format("{:,.2f}"), use_container_width=True)
+        with st.expander("Ringkasan statistik", icon=":material/functions:"):
+            stats = filtered[num_cols].describe()
+            stats.index = ["Jumlah", "Rata-rata", "Std. deviasi", "Minimum",
+                           "Kuartil 1", "Median", "Kuartil 3", "Maksimum"]
+            stats.columns = [COL_LABELS.get(c, c) for c in stats.columns]
+            st.dataframe(
+                stats, use_container_width=True,
+                column_config={c: st.column_config.NumberColumn(format="localized") for c in stats.columns},
+            )
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # TAB 2 — PETA
 # ═══════════════════════════════════════════════════════════════════════════════
 with tab_peta:
-    if filtered.empty:
-        st.warning("Tidak ada data untuk ditampilkan di peta.")
+    map_df = filtered[filtered["Latitude"].notna() & filtered["Longitude"].notna()].copy()
+    map_df = map_df[
+        map_df["Latitude"].between(-90, 90) &
+        map_df["Longitude"].between(-180, 180)
+    ]
+
+    subj_mask   = map_df["Nomor"].astype(str).str.lower().str.contains("obyek", na=False)
+    subj_df     = map_df[subj_mask]
+    comp_map_df = map_df[~subj_mask]
+
+    # ── Toolbar peta ──────────────────────────────────────────────────────────
+    tb1, tb2, tb3, tb4 = st.columns([3, 1.2, 1.2, 1.2], vertical_alignment="center")
+    tb1.caption(f"**{len(subj_df)}** obyek penilaian · **{len(comp_map_df)}** data pembanding "
+                "berkoordinat — klik penanda untuk melihat detail.")
+    show_lines   = tb2.toggle("Garis jarak", value=True)
+    show_labels  = tb3.toggle("Label harga", value=True)
+    show_heatmap = tb4.toggle("Heatmap harga", value=False)
+
+    # Pusatkan peta ke obyek penilaian jika ada, atau rata-rata semua
+    if not subj_df.empty:
+        lat0, lon0 = float(subj_df.iloc[0]["Latitude"]), float(subj_df.iloc[0]["Longitude"])
+    elif not map_df.empty:
+        lat0, lon0 = map_df["Latitude"].mean(), map_df["Longitude"].mean()
     else:
-        map_df = filtered[filtered["Latitude"].notna() & filtered["Longitude"].notna()].copy()
-        map_df = map_df[
-            map_df["Latitude"].between(-90, 90) &
-            map_df["Longitude"].between(-180, 180)
+        lat0, lon0 = -2.548926, 118.0148634
+
+    m = folium.Map(
+        location=[lat0, lon0],
+        zoom_start=14 if len(map_df) <= 20 else 12,
+        min_zoom=5, max_zoom=18,
+        prefer_canvas=True, control_scale=True,
+        tiles=None,
+    )
+    folium.TileLayer(
+        tiles="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
+        name="Peta jalan", attr="©OpenStreetMap ©CartoDB",
+    ).add_to(m)
+    folium.TileLayer(
+        tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        name="Citra satelit", attr="Tiles © Esri",
+    ).add_to(m)
+
+    if show_heatmap and not comp_map_df.empty:
+        heat = [
+            [r.Latitude, r.Longitude, float(r.Harga_Tanah)]
+            for r in comp_map_df.itertuples()
+            if pd.notna(getattr(r, "Harga_Tanah", None))
         ]
+        if heat:
+            HeatMap(heat, name="Heatmap harga", radius=30, blur=20, min_opacity=0.4).add_to(m)
 
-        subj_mask   = map_df["Nomor"].astype(str).str.lower().str.contains("obyek", na=False)
-        subj_df     = map_df[subj_mask]
-        comp_map_df = map_df[~subj_mask]
+    # ── Garis jarak dari Obyek Penilaian ke setiap Data Pembanding ──────────
+    if show_lines and not subj_df.empty and not comp_map_df.empty:
+        s = subj_df.iloc[0]
+        lines_fg = folium.FeatureGroup(name="Garis jarak", show=True).add_to(m)
 
-        # Pusatkan peta ke obyek penilaian jika ada, atau rata-rata semua
-        if not subj_df.empty:
-            lat0, lon0 = float(subj_df.iloc[0]["Latitude"]), float(subj_df.iloc[0]["Longitude"])
-        elif not map_df.empty:
-            lat0, lon0 = map_df["Latitude"].mean(), map_df["Longitude"].mean()
+        for r in comp_map_df.itertuples():
+            nomor_r = str(safe_get(r, "Nomor")).strip()
+            dist_km = haversine_km(s.Latitude, s.Longitude, r.Latitude, r.Longitude)
+            dist_label = f"{dist_km:.2f} km" if dist_km >= 1 else f"{dist_km*1000:.0f} m"
+
+            folium.PolyLine(
+                locations=[[s.Latitude, s.Longitude], [r.Latitude, r.Longitude]],
+                color=NAVY_DK, weight=1.5, dash_array="5 5", opacity=0.7,
+                tooltip=f"Obyek → Data {nomor_r}: {dist_label}",
+            ).add_to(lines_fg)
+
+            # Label jarak di tengah garis
+            folium.Marker(
+                [(s.Latitude + r.Latitude) / 2, (s.Longitude + r.Longitude) / 2],
+                icon=folium.DivIcon(
+                    html=f"""<div style="font:600 10px/1.2 'Segoe UI',sans-serif;color:{NAVY_DK};
+                                background:rgba(255,255,255,.92);padding:2px 6px;border-radius:9px;
+                                border:1px solid {LINE};white-space:nowrap;pointer-events:none;
+                                display:inline-block">{dist_label}</div>""",
+                    icon_size=(70, 18), icon_anchor=(35, 9),
+                ),
+            ).add_to(lines_fg)
+
+    marker_layer = folium.FeatureGroup(name="Data pembanding").add_to(m)
+    subj_layer   = folium.FeatureGroup(name="Obyek penilaian", show=True).add_to(m)
+
+    for r in map_df.itertuples():
+        nomor     = str(safe_get(r, "Nomor")).strip()
+        tahun     = getattr(r, "Tahun_Bersih", 0) or 0
+        harga_fmt = format_currency(getattr(r, "Harga_Tanah", 0))
+
+        if "obyek" in nomor.lower():
+            folium.Marker(
+                location=[r.Latitude, r.Longitude],
+                tooltip="Obyek Penilaian",
+                icon=folium.DivIcon(
+                    html=f"""<div style="width:34px;height:34px;border-radius:50% 50% 50% 0;
+                                transform:rotate(-45deg);background:{NAVY_DK};border:3px solid #fff;
+                                box-shadow:0 2px 8px rgba(0,0,0,.45);display:flex;
+                                align-items:center;justify-content:center">
+                               <span style="transform:rotate(45deg);color:#fff;
+                                 font:700 11px 'Segoe UI',sans-serif">OP</span></div>""",
+                    icon_size=(34, 34), icon_anchor=(17, 40),
+                ),
+            ).add_to(subj_layer)
         else:
-            lat0, lon0 = -2.548926, 118.0148634
+            warna = get_color_by_year(tahun)
+            folium.Marker(
+                location=[r.Latitude, r.Longitude],
+                tooltip=f"Data {nomor} · {harga_fmt}/m²",
+                icon=folium.DivIcon(
+                    html=f"""<div style="width:26px;height:26px;border-radius:50%;background:{warna};
+                                border:2.5px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.4);
+                                display:flex;align-items:center;justify-content:center;
+                                color:#fff;font:700 10px 'Segoe UI',sans-serif">{nomor}</div>""",
+                    icon_size=(26, 26), icon_anchor=(13, 13),
+                ),
+            ).add_to(marker_layer)
 
-        m = folium.Map(
-            location=[lat0, lon0],
-            zoom_start=14 if len(map_df) <= 20 else 12,
-            min_zoom=5, max_zoom=18,
-            prefer_canvas=True, control_scale=True,
+            if show_labels:
+                folium.Marker(
+                    [r.Latitude, r.Longitude],
+                    icon=folium.DivIcon(
+                        html=f"""<div style="font:600 10px/1.25 'Segoe UI',sans-serif;color:#1E293B;
+                                    background:rgba(255,255,255,.88);padding:2px 6px;border-radius:4px;
+                                    border-left:3px solid {warna};white-space:nowrap;
+                                    pointer-events:none;display:inline-block;
+                                    box-shadow:0 1px 3px rgba(0,0,0,.15)">{harga_fmt}/m²</div>""",
+                        icon_size=(120, 18), icon_anchor=(-16, 9),
+                    ),
+                ).add_to(marker_layer)
+
+    folium.LayerControl(collapsed=True).add_to(m)
+
+    def _lg(color, text, shape="50%"):
+        return (f'<div style="display:flex;align-items:center;gap:7px;margin:3px 0">'
+                f'<span style="width:11px;height:11px;border-radius:{shape};background:{color};'
+                f'display:inline-block;border:1.5px solid #fff;box-shadow:0 0 0 1px {LINE}"></span>{text}</div>')
+    legend = (
+        '<div style="position:fixed;bottom:24px;left:12px;z-index:1000;background:rgba(255,255,255,.96);'
+        f'padding:9px 12px;border-radius:8px;border:1px solid {LINE};'
+        "font:12px 'Segoe UI',sans-serif;color:#334155;box-shadow:0 2px 8px rgba(0,0,0,.12)\">"
+        '<div style="font-weight:700;margin-bottom:4px;color:#0F2A44">Tahun data</div>'
+        + _lg(YEAR_COLORS["gte_2025"], "2025 ke atas")
+        + _lg(YEAR_COLORS["gte_2024"], "2024")
+        + _lg(YEAR_COLORS["gte_2023"], "2023")
+        + _lg(YEAR_COLORS["lt_2023"], "Sebelum 2023")
+        + _lg(NAVY_DK, "Obyek penilaian", "50% 50% 50% 0")
+        + '</div>'
+    )
+    m.get_root().html.add_child(folium.Element(legend))
+
+    # ── Split layout: peta kiri | panel detail kanan ────────────────────────
+    col_map, col_detail = st.columns([7, 3], gap="medium")
+
+    with col_map:
+        result = st_folium(
+            m, width="100%", height=640,
+            returned_objects=["last_object_clicked"],
+            key="folium_peta",
         )
-
-        folium.TileLayer(
-            tiles="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
-            name="Voyager", attr="©OpenStreetMap ©CartoDB",
-        ).add_to(m)
-        folium.TileLayer(
-            tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-            name="Satellite", attr="Tiles © Esri",
-        ).add_to(m)
-
-        if show_heatmap and not comp_map_df.empty:
-            heat = [
-                [r.Latitude, r.Longitude, float(r.Harga_Tanah)]
-                for r in comp_map_df.itertuples()
-                if pd.notna(getattr(r, "Harga_Tanah", None))
-            ]
-            if heat:
-                HeatMap(heat, name="Heatmap Harga", radius=30, blur=20, min_opacity=0.4).add_to(m)
-
-        # ── Garis jarak dari Obyek Penilaian ke setiap Data Pembanding ──────
-        if not subj_df.empty and not comp_map_df.empty:
-            s = subj_df.iloc[0]
-            lines_fg = folium.FeatureGroup(name="📏 Garis Jarak", show=True).add_to(m)
-
-            for r in comp_map_df.itertuples():
-                nomor_r = str(safe_get(r, "Nomor")).strip()
-                dist_km = haversine_km(s.Latitude, s.Longitude, r.Latitude, r.Longitude)
-                dist_label = f"{dist_km:.2f} km" if dist_km >= 1 else f"{dist_km*1000:.0f} m"
-
-                folium.PolyLine(
-                    locations=[[s.Latitude, s.Longitude], [r.Latitude, r.Longitude]],
-                    color="#e74c3c",
-                    weight=2,
-                    dash_array="6 4",
-                    opacity=0.8,
-                    tooltip=f"Obyek → Data {nomor_r}: {dist_label}",
-                ).add_to(lines_fg)
-
-                # Label jarak di tengah garis
-                mid_lat = (s.Latitude + r.Latitude) / 2
-                mid_lon = (s.Longitude + r.Longitude) / 2
-                folium.Marker(
-                    [mid_lat, mid_lon],
-                    icon=folium.DivIcon(
-                        html=f"""
-                        <div style="font-size:10px;font-weight:bold;color:#c0392b;
-                                    background:rgba(255,255,255,0.9);padding:2px 6px;
-                                    border-radius:10px;border:1px solid #e74c3c;
-                                    white-space:nowrap;pointer-events:none;
-                                    box-shadow:1px 1px 3px rgba(0,0,0,0.2)">
-                            📏 {dist_label}
-                        </div>""",
-                        icon_size=(90, 22),
-                        icon_anchor=(45, 11),
-                    ),
-                ).add_to(lines_fg)
-
-        # ── Layer marker data pembanding — selalu individual pin ────────────
-        marker_layer = folium.FeatureGroup(name="Data Pembanding").add_to(m)
-
-        # ── Layer Obyek Penilaian — selalu terpisah, tidak masuk cluster ────
-        subj_layer = folium.FeatureGroup(name="🏠 Obyek Penilaian", show=True).add_to(m)
-
-        def _foto_mini(url, label_txt):
-            """Thumbnail kecil dengan label dan link buka tab baru."""
-            lh3, thumb = gdrive_thumbnail(url, width=130)
-            if not lh3:
-                return ""
-            return f"""
-            <div style="display:inline-block;text-align:center;margin:3px 3px 0 0;vertical-align:top">
-              <img src="{lh3}"
-                   style="width:130px;height:90px;object-fit:cover;border-radius:4px;
-                          border:1px solid #ddd"
-                   referrerpolicy="no-referrer"
-                   onerror="this.src='{thumb}';this.onerror=null;">
-              <br>
-              <a href="{url}" target="_blank"
-                 style="font-size:10px;color:#2980b9">&#8599; {label_txt}</a>
-            </div>"""
-
-        # ── CSS constants untuk popup ─────────────────────────────────────
-        SEC  = ("background:#f0faf5;color:#1a7a4a;font-size:10px;font-weight:bold;"
-                "text-transform:uppercase;letter-spacing:0.6px;padding:3px 7px;"
-                "border-radius:3px;margin:8px 0 3px 0;display:block")
-        TD_L = ("color:#777;white-space:nowrap;padding:3px 6px 3px 0;"
-                "vertical-align:top;font-size:11.5px")
-        TD_V = "padding:3px 10px 3px 0;vertical-align:top;font-size:12px"
-        TR_A = "background:#f8fafb"   # alternating row background
-
-        def build_popup(r, is_subj, tahun, harga_fmt, luas_t, luas_b, foto):
-            nomor_str = str(safe_get(r, "Nomor")).strip()
-
-            # ── row helpers ───────────────────────────────────────────────
-            def r2(l1, v1, l2, v2, stripe=False):
-                bg = f' style="background:#f8fafb"' if stripe else ""
-                return (
-                    f'<tr{bg}>'
-                    f'<td style="{TD_L}">{l1}</td>'
-                    f'<td style="{TD_V}">{v1}</td>'
-                    f'<td style="{TD_L}">{l2}</td>'
-                    f'<td style="{TD_V}">{v2}</td>'
-                    f'</tr>'
+        if result and result.get("last_object_clicked"):
+            c = result["last_object_clicked"]
+            lat_c, lng_c = c.get("lat"), c.get("lng")
+            if lat_c is not None and lng_c is not None and not map_df.empty:
+                dists = (
+                    (map_df["Latitude"]  - lat_c) ** 2 +
+                    (map_df["Longitude"] - lng_c) ** 2
                 )
-            def r1(lbl, val, stripe=False):
-                bg = f' style="background:#f8fafb"' if stripe else ""
-                return (
-                    f'<tr{bg}>'
-                    f'<td style="{TD_L}">{lbl}</td>'
-                    f'<td colspan="3" style="{TD_V}">{val}</td>'
-                    f'</tr>'
-                )
-            def sec(icon, title):
-                return f'<tr><td colspan="4"><span style="{SEC}">{icon} {title}</span></td></tr>'
+                if dists.min() < 1e-5:
+                    st.session_state["peta_sel"] = int(dists.idxmin())
 
-            tbl_open  = '<table style="width:100%;border-collapse:collapse">'
-            tbl_close = '</table>'
+    # ── Panel detail ─────────────────────────────────────────────────────────
+    with col_detail:
+        sel_idx = st.session_state.get("peta_sel")
+        if sel_idx is None or sel_idx not in map_df.index:
+            components.html(
+                f'<div style="height:632px;display:flex;align-items:center;justify-content:center;'
+                f'border:1px dashed #CBD5E1;border-radius:10px;background:#F8FAFC;'
+                f"font-family:'Source Sans Pro','Segoe UI',sans-serif;color:{SLATE}\">"
+                '<div style="text-align:center;padding:0 24px">'
+                f'<div style="font-weight:600;color:{NAVY_DK};font-size:14px">Belum ada yang dipilih</div>'
+                '<div style="font-size:12.5px;margin-top:6px;line-height:1.5">'
+                'Klik penanda obyek atau data pembanding di peta untuk melihat foto dan rinciannya.</div>'
+                '</div></div>',
+                height=640)
+        else:
+            row      = map_df.loc[sel_idx]
+            nomor_d  = str(safe_get(row, "Nomor")).strip()
+            is_s     = "obyek" in nomor_d.lower()
+            tahun_d  = row.get("Tahun_Bersih") if hasattr(row, "get") else None
+            harga_d  = format_currency(row.get("Harga_Tanah"))
+            foto_url = str(safe_get(row, "Foto", ""))
 
-            if is_subj:
-                # ── Galeri foto ───────────────────────────────────────────
-                foto_pairs = [
-                    (safe_get(r, "Foto",              "#"), "Depan"),
-                    (safe_get(r, "Foto_Dalam",         "#"), "Dalam"),
-                    (safe_get(r, "Foto_Samping_Kanan", "#"), "Kanan"),
-                    (safe_get(r, "Foto_Samping_Kiri",  "#"), "Kiri"),
-                    (safe_get(r, "Gambar_Situasi",     "#"), "Situasi"),
-                ]
-                thumbs = "".join(_foto_mini(u, lb) for u, lb in foto_pairs
-                                 if u not in ("#", "-", "nan", "None", ""))
-                galeri = (
-                    f'<div style="margin:6px 0 10px;overflow-x:auto;white-space:nowrap">{thumbs}</div>'
-                    if thumbs else ""
-                )
-                sv_url = generate_streetview_url(r.Latitude, r.Longitude)
-                body = f"""
-                {galeri}
-                {tbl_open}
-                  {sec('📋','Identitas')}
-                  {r2('Pemilik', safe_get(r,'Pemilik'), 'Jenis', safe_get(r,'Jenis_Properti'))}
-                  {r2('Kode Inspeksi', safe_get(r,'Kode_Inspeksi'), 'Reviewer', safe_get(r,'Reviewer'), True)}
-                  {r1('Pemberi Tugas', safe_get(r,'Pemberi_Tugas'))}
-                  {sec('📍','Lokasi')}
-                  {r1('Alamat', safe_get(r,'Alamat'))}
-                  {r2('Kelurahan', safe_get(r,'Kelurahan'), 'Kecamatan', safe_get(r,'Kecamatan'), True)}
-                  {r2('Kota', safe_get(r,'Kota'), 'Propinsi', safe_get(r,'Propinsi'))}
-                  {sec('📐','Fisik')}
-                  {r2('Luas Tanah', f'{luas_t} m²', 'Luas Bangunan', f'{luas_b} m²')}
-                  {r2('Peruntukan', safe_get(r,'Peruntukan'), 'Kepemilikan', safe_get(r,'Kepemilikan'), True)}
-                  {r1('Penggunaan', safe_get(r,'Penggunaan'))}
-                {tbl_close}
-                <div style="margin-top:8px;font-size:11px;display:flex;gap:14px">
-                  <a href="{sv_url}" target="_blank"
-                     style="color:#2980b9;text-decoration:none">
-                    &#128269; Street View &#8599;
-                  </a>
-                </div>"""
+            # ── Kumpulkan semua foto ──────────────────────────────────────
+            all_fotos = []
+            for u_raw, lb in (
+                [(foto_url, "Depan"),
+                 (str(safe_get(row, "Foto_Jalan", "")), "Jalan")]
+                + ([(str(safe_get(row, c, "")), lb2)
+                    for c, lb2 in [("Foto_Dalam","Dalam"),
+                                   ("Foto_Samping_Kanan","Kanan"),
+                                   ("Foto_Samping_Kiri","Kiri"),
+                                   ("Gambar_Situasi","Situasi")]]
+                   if is_s else [])
+            ):
+                if u_raw not in ("", "#", "-", "nan", "None"):
+                    lh, th = gdrive_thumbnail(u_raw, width=600)
+                    if lh:
+                        all_fotos.append((lh, th, u_raw, lb))
 
-                return f"""
-                <div style="font-family:'Segoe UI',Arial,sans-serif;
-                            min-width:320px;max-width:380px">
-                  <div style="background:#fdecea;border-left:4px solid #c0392b;
-                              padding:7px 10px;margin-bottom:4px;
-                              border-radius:0 5px 5px 0">
-                    <b style="font-size:14px;color:#c0392b">🏠 Obyek Penilaian</b>
-                  </div>
-                  {body}
-                </div>"""
+            # ── Helper builders ───────────────────────────────────────────
+            def _v(x):
+                s = str(x) if x is not None else ""
+                return s if s not in ("-", "", "None", "nan") else "—"
+            def sh(title):
+                return (f'<div style="color:{SLATE};font-size:10.5px;font-weight:700;'
+                        f'text-transform:uppercase;letter-spacing:.06em;margin:14px 0 4px;'
+                        f'padding-bottom:4px;border-bottom:1px solid {LINE}">{title}</div>')
+            def r1(lbl, val):
+                return (f'<div style="padding:4px 0">'
+                        f'<div style="color:{SLATE};font-size:11px">{lbl}</div>'
+                        f'<div style="color:#1E293B;font-size:13px;font-weight:500">{_v(val)}</div></div>')
+            def r2(l1, v1, l2, v2):
+                return (f'<div style="display:grid;grid-template-columns:1fr 1fr;gap:0 10px">'
+                        f'{r1(l1, v1)}{r1(l2, v2)}</div>')
+            def _luas(col):
+                v = row.get(col)
+                if v is None or (isinstance(v, float) and pd.isna(v)): return "—"
+                try: return f"{float(v):,.0f} m²".replace(",", ".")
+                except: return str(v)
 
+            # ── Build HTML ────────────────────────────────────────────────
+            P = []
+            P.append('<div style="height:632px;overflow-y:auto;padding:0 6px 8px 0;'
+                     "font-family:'Source Sans Pro','Segoe UI',sans-serif;color:#1E293B;"
+                     'scrollbar-width:thin;scrollbar-color:#CBD5E1 transparent">')
+
+            # Header
+            if is_s:
+                P.append(f'<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'
+                         f'<span style="background:{NAVY_DK};color:#fff;border-radius:6px;padding:3px 8px;'
+                         f'font-size:11px;font-weight:700">OP</span>'
+                         f'<b style="font-size:16px;color:{NAVY_DK}">Obyek Penilaian</b></div>')
             else:
-                # ── Data Pembanding ───────────────────────────────────────
-                foto_jalan_url = str(safe_get(r, "Foto_Jalan", "#"))
-                foto_jalan_ok  = foto_jalan_url not in ("#", "-", "nan", "None", "")
-                sv_url         = generate_streetview_url(r.Latitude, r.Longitude)
-                lh3, thumb_url = gdrive_thumbnail(foto, width=440)
+                jenis_d = safe_get(row, "Jenis_Data")
+                is_pen  = "penawaran" in str(jenis_d).lower()
+                b_bg, b_fg = ("#FDF3E1", "#9A6412") if is_pen else ("#E6EEF6", NAVY)
+                thn_lbl = f"{int(tahun_d)}" if tahun_d and not pd.isna(tahun_d) else ""
+                P.append(f'<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'
+                         f'<b style="font-size:16px;color:{NAVY_DK}">Data {nomor_d}</b>'
+                         f'<span style="background:{b_bg};color:{b_fg};border-radius:999px;'
+                         f'padding:2px 9px;font-size:11px;font-weight:600">{jenis_d}</span>'
+                         f'<span style="color:{SLATE};font-size:12px;margin-left:auto">{thn_lbl}</span></div>')
 
-                # ── foto + semua link dalam SATU baris ────────────────────
-                links = []
-                if lh3 and foto not in ("#", "-", "nan", "None", ""):
-                    links.append(
-                        f'<a href="{foto}" target="_blank"'
-                        f' style="color:#2980b9;text-decoration:none">&#128247; Foto Depan &#8599;</a>'
-                    )
-                if foto_jalan_ok:
-                    links.append(
-                        f'<a href="{foto_jalan_url}" target="_blank"'
-                        f' style="color:#2980b9;text-decoration:none">&#128247; Foto Jalan &#8599;</a>'
-                    )
-                links.append(
-                    f'<a href="{sv_url}" target="_blank"'
-                    f' style="color:#2980b9;text-decoration:none">&#128269; Street View &#8599;</a>'
-                )
-                link_bar = (
-                    f'<div style="display:flex;gap:12px;margin:5px 0 10px;'
-                    f'font-size:11px;flex-wrap:wrap">'
-                    + " ".join(links) +
-                    f'</div>'
-                )
-
-                foto_img = ""
-                if lh3:
-                    foto_img = f"""
-                    <img src="{lh3}"
-                         style="width:100%;border-radius:7px;display:block;
-                                border:1px solid #e0e0e0;
-                                box-shadow:0 2px 8px rgba(0,0,0,0.12)"
-                         referrerpolicy="no-referrer"
-                         onerror="this.src='{thumb_url}';this.onerror=null;">"""
-
-                # Harga
-                ht  = getattr(r, "Harga_Total", None)
-                ht_str = format_currency(ht) if (ht and not pd.isna(ht)) else None
-
-                harga_card = f"""
-                <div style="background:linear-gradient(135deg,#eafaf1,#d5f5e3);
-                            border-radius:7px;padding:8px 12px;margin:6px 0;
-                            border:1px solid #a9dfbf">
-                  {"<div style='font-size:11px;color:#555;margin-bottom:2px'>Harga Total: " + ht_str + "</div>" if ht_str else ""}
-                  <div style="font-size:22px;font-weight:bold;color:#1a7a4a;line-height:1.1">
-                    {harga_fmt}
-                    <span style="font-size:12px;color:#555;font-weight:normal">/m²</span>
-                  </div>
-                </div>"""
-
-                # Badge header
-                jenis_data = safe_get(r, "Jenis_Data")
-                badge_col  = "#e67e22" if "penawaran" in str(jenis_data).lower() else "#2980b9"
-                header = f"""
-                <div style="background:#eafaf1;border-left:4px solid #27ae60;
-                            padding:7px 10px;margin-bottom:6px;border-radius:0 5px 5px 0;
-                            display:flex;align-items:center;gap:8px">
-                  <b style="font-size:15px;color:#1a7a4a">Data {nomor_str}</b>
-                  <span style="background:{badge_col};color:white;border-radius:10px;
-                               padding:1px 8px;font-size:10.5px;font-weight:600">
-                    {jenis_data}
-                  </span>
-                  <span style="color:#888;font-size:11px;margin-left:auto">{int(tahun) if tahun else ''}</span>
-                </div>"""
-
-                body = f"""
-                {foto_img}
-                {link_bar}
-                {harga_card}
-                {tbl_open}
-                  {sec('📍','Lokasi & Properti')}
-                  {r2('Jenis', safe_get(r,'Jenis_Properti'), 'Tahun', int(tahun) if tahun else '-')}
-                  {r1('Alamat', safe_get(r,'Alamat'), True)}
-                  {r1('Kompleks', safe_get(r,'Kompleks'))}
-                  {r2('Kelurahan', safe_get(r,'Kelurahan'), 'Kecamatan', safe_get(r,'Kecamatan'), True)}
-                  {r2('Kota', safe_get(r,'Kota'), 'Propinsi', safe_get(r,'Propinsi'))}
-                  {sec('🏗️','Fisik Bangunan')}
-                  {r2('Luas Tanah', f'{luas_t} m²', 'Luas Bangunan', f'{luas_b} m²')}
-                  {r2('Kondisi Bgn', safe_get(r,'Kondisi_Bangunan'), 'Kelas Bgn', safe_get(r,'Kelas_Bangunan'), True)}
-                  {sec('📞','Kontak')}
-                  {r2('Nama', safe_get(r,'Kontak'), 'Telp', safe_get(r,'Telp'))}
-                {tbl_close}"""
-
-                return f"""
-                <div style="font-family:'Segoe UI',Arial,sans-serif;
-                            min-width:440px;max-width:500px">
-                  {header}
-                  {body}
-                </div>"""
-
-        for r in map_df.itertuples():
-            nomor     = str(safe_get(r, "Nomor")).strip()
-            tahun     = getattr(r, "Tahun_Bersih", 0) or 0
-            is_subj   = "obyek" in nomor.lower()
-            foto      = str(safe_get(r, "Foto", "#"))
-            harga_fmt = format_currency(getattr(r, "Harga_Tanah", 0))
-            def _fmt_luas(col):
-                v = getattr(r, col, None)
-                if v is None or (isinstance(v, float) and pd.isna(v)):
-                    return "-"
-                try:
-                    return f"{float(v):,.0f}".replace(",", ".")
-                except Exception:
-                    return str(v)
-            luas_t = _fmt_luas("Luas_Tanah")
-            luas_b = _fmt_luas("Luas_Bangunan")
-
-            popup_html = build_popup(r, is_subj, tahun, harga_fmt, luas_t, luas_b, foto)
-            target = subj_layer if is_subj else marker_layer
-
-            if is_subj:
-                folium.Marker(
-                    location=[r.Latitude, r.Longitude],
-                    tooltip="🏠 Obyek Penilaian — klik untuk detail",
-                    icon=folium.DivIcon(
-                        html="""
-                        <div style="position:relative;width:38px;height:50px">
-                          <div style="width:38px;height:38px;background:#c0392b;
-                                      border-radius:50% 50% 50% 0;
-                                      transform:rotate(-45deg);
-                                      border:3px solid white;
-                                      box-shadow:0 3px 8px rgba(0,0,0,0.5)">
-                          </div>
-                          <span style="position:absolute;top:4px;left:6px;
-                                       font-size:18px;line-height:1">🏠</span>
-                        </div>""",
-                        icon_size=(38, 50),
-                        icon_anchor=(19, 50),
-                    ),
-                ).add_to(target)
-                # Label Obyek Penilaian — lebih besar & mencolok
-                folium.Marker(
-                    [r.Latitude, r.Longitude],
-                    icon=folium.DivIcon(
-                        html="""
-                        <div style="font-size:11px;font-weight:bold;color:#c0392b;
-                                    background:rgba(255,255,255,0.45);padding:2px 6px;
-                                    border-radius:4px;white-space:nowrap;
-                                    border:1px solid rgba(192,57,43,0.5);pointer-events:none;
-                                    backdrop-filter:blur(2px);margin-top:2px">
-                            🏠 Obyek
-                        </div>""",
-                        icon_size=(175, 28),
-                        icon_anchor=(87, -4),
-                    ),
-                ).add_to(m)
-            else:
-                warna = get_color_by_year(tahun)
-                folium.Marker(
-                    location=[r.Latitude, r.Longitude],
-                    tooltip=f"Data {nomor} | {harga_fmt}/m²",
-                    icon=folium.Icon(color=warna, icon="info-sign", prefix="glyphicon"),
-                ).add_to(target)
-
-                label_color = "#922b21" if warna == "red" else "#154360"
-                folium.Marker(
-                    [r.Latitude, r.Longitude],
-                    icon=folium.DivIcon(
-                        html=f"""
-                        <div style="font-size:10px;color:{label_color};font-weight:600;
-                                    background:rgba(255,255,255,0.42);padding:1px 4px;
-                                    border-radius:3px;white-space:nowrap;
-                                    border:1px solid rgba(100,100,100,0.25);pointer-events:none;
-                                    backdrop-filter:blur(2px);line-height:1.3">
-                            {harga_fmt}/m²<br>
-                            <span style="font-size:9px;opacity:0.85">#{nomor}</span>
-                        </div>""",
-                        icon_size=(130, 32),
-                        icon_anchor=(0, 0),
-                    ),
-                ).add_to(m)
-
-        folium.LayerControl(collapsed=True).add_to(m)
-
-        legend = """
-        <div class="legend-box">
-          <b>Legenda Tahun:</b><br>
-          <span style="color:green">&#9679;</span> &ge; 2025<br>
-          <span style="color:blue">&#9679;</span> 2024<br>
-          <span style="color:orange">&#9679;</span> 2023<br>
-          <span style="color:red">&#9679;</span> &lt; 2023<br>
-          <span style="color:#c0392b;font-size:14px">🏠</span> Obyek Penilaian<br>
-          <span style="color:#e74c3c">&#9135;&#9135;</span> Garis Jarak
-        </div>
-        """
-        m.get_root().html.add_child(folium.Element(legend))
-
-        # ── Split layout: peta kiri | panel detail kanan ────────────────
-        col_map, col_detail = st.columns([7, 3], gap="medium")
-
-        with col_map:
-            n_subj = map_df["Nomor"].astype(str).str.lower().str.contains("obyek").sum()
-            n_comp = len(map_df) - n_subj
-            st.caption(
-                f"**{n_subj}** Obyek Penilaian + **{n_comp}** Data Pembanding"
-                f" — klik marker untuk detail di panel kanan"
-            )
-            result = st_folium(
-                m, width="100%", height=620,
-                returned_objects=["last_object_clicked"],
-                key="folium_peta",
-            )
-            if result and result.get("last_object_clicked"):
-                c = result["last_object_clicked"]
-                lat_c, lng_c = c.get("lat"), c.get("lng")
-                if lat_c is not None and lng_c is not None and not map_df.empty:
-                    dists = (
-                        (map_df["Latitude"]  - lat_c) ** 2 +
-                        (map_df["Longitude"] - lng_c) ** 2
-                    )
-                    if dists.min() < 1e-5:
-                        st.session_state["peta_sel"] = int(dists.idxmin())
-
-        # ── Panel detail ─────────────────────────────────────────────────
-        with col_detail:
-            sel_idx = st.session_state.get("peta_sel")
-            if sel_idx is None or sel_idx not in map_df.index:
-                components.html(
-                    '<div style="height:620px;display:flex;align-items:center;'
-                    'justify-content:center;border:2px dashed #e8e8e8;border-radius:8px;'
-                    'font-family:-apple-system,sans-serif;color:#ccc">'
-                    '<div style="text-align:center">'
-                    '<div style="font-size:34px">👆</div>'
-                    '<div style="font-size:11px;margin-top:8px;line-height:1.6">'
-                    'Klik marker di peta<br>untuk detail properti</div>'
-                    '</div></div>',
-                    height=625)
-            else:
-                row      = map_df.loc[sel_idx]
-                nomor_d  = str(safe_get(row, "Nomor")).strip()
-                is_s     = "obyek" in nomor_d.lower()
-                tahun_d  = row.get("Tahun_Bersih") if hasattr(row, "get") else None
-                harga_d  = format_currency(row.get("Harga_Tanah"))
-                foto_url = str(safe_get(row, "Foto", ""))
-
-                # ── Kumpulkan semua foto ──────────────────────────────────
-                all_fotos = []
-                for u_raw, lb in (
-                    [(foto_url, "Depan"),
-                     (str(safe_get(row, "Foto_Jalan", "")), "Jalan")]
-                    + ([(str(safe_get(row, c, "")), lb2)
-                        for c, lb2 in [("Foto_Dalam","Dalam"),
-                                       ("Foto_Samping_Kanan","Kanan"),
-                                       ("Foto_Samping_Kiri","Kiri"),
-                                       ("Gambar_Situasi","Situasi")]]
-                       if is_s else [])
-                ):
-                    if u_raw not in ("", "#", "-", "nan", "None"):
-                        lh, th = gdrive_thumbnail(u_raw, width=600)
-                        if lh:
-                            all_fotos.append((lh, th, u_raw, lb))
-
-                # ── Helper builders ───────────────────────────────────────
-                def _v(x):
-                    s = str(x) if x is not None else ""
-                    return s if s not in ("-", "", "None", "nan") else "—"
-                def sh(icon, title):
-                    return (f'<div style="background:#f0faf5;color:#1a7a4a;font-size:8.5px;'
-                            f'font-weight:700;text-transform:uppercase;letter-spacing:.5px;'
-                            f'padding:2px 5px;border-radius:2px;margin:5px 0 1px">'
-                            f'{icon} {title}</div>')
-                def r1(lbl, val):
-                    return (f'<div style="display:flex;border-bottom:1px solid #f5f5f5;padding:1.5px 0">'
-                            f'<span style="color:#bbb;font-size:9.5px;min-width:82px;flex-shrink:0">{lbl}</span>'
-                            f'<span style="color:#1a1a1a;font-size:10.5px;font-weight:500">{_v(val)}</span></div>')
-                def r2(l1, v1, l2, v2):
-                    return (f'<div style="display:grid;grid-template-columns:1fr 1fr;'
-                            f'gap:0 3px;border-bottom:1px solid #f5f5f5;padding:1.5px 0">'
-                            f'<div><span style="display:block;color:#bbb;font-size:9px">{l1}</span>'
-                            f'<span style="color:#1a1a1a;font-size:10.5px;font-weight:500">{_v(v1)}</span></div>'
-                            f'<div><span style="display:block;color:#bbb;font-size:9px">{l2}</span>'
-                            f'<span style="color:#1a1a1a;font-size:10.5px;font-weight:500">{_v(v2)}</span></div></div>')
-                def _luas(col):
-                    v = row.get(col)
-                    if v is None or (isinstance(v, float) and pd.isna(v)): return "—"
-                    try: return f"{float(v):,.0f} m²".replace(",", ".")
-                    except: return str(v)
-
-                # ── Build HTML ────────────────────────────────────────────
-                P = []
-                P.append('<div style="height:620px;overflow-y:auto;padding:0 5px 8px 0;'
-                         'font-family:-apple-system,\'Segoe UI\',sans-serif;'
-                         'scrollbar-width:thin;scrollbar-color:#ddd transparent">')
-
-                # Header
-                if is_s:
-                    P.append('<div style="background:#fdecea;border-left:3px solid #c0392b;'
-                             'padding:4px 8px;margin-bottom:4px;border-radius:0 4px 4px 0">'
-                             '<b style="color:#c0392b;font-size:12px">🏠 Obyek Penilaian</b></div>')
-                else:
-                    jenis_d = safe_get(row, "Jenis_Data")
-                    badge   = "#e67e22" if "penawaran" in str(jenis_d).lower() else "#2980b9"
-                    thn_lbl = f"· {int(tahun_d)}" if tahun_d and not pd.isna(tahun_d) else ""
-                    P.append(f'<div style="background:#eafaf1;border-left:3px solid #27ae60;'
-                             f'padding:4px 8px;margin-bottom:4px;border-radius:0 4px 4px 0;'
-                             f'display:flex;align-items:center;gap:5px">'
-                             f'<b style="color:#1a7a4a;font-size:12px">Data {nomor_d}</b>'
-                             f'<span style="background:{badge};color:white;border-radius:6px;'
-                             f'padding:1px 5px;font-size:9px">{jenis_d}</span>'
-                             f'<span style="color:#bbb;font-size:10px;margin-left:auto">{thn_lbl}</span></div>')
-
-                # Carousel foto — menggunakan JavaScript (berjalan di components.html iframe)
-                if all_fotos:
-                    n_foto  = len(all_fotos)
-                    slides  = ",".join(
-                        f'{{s:"{lh}",f:"{th}",h:"{hr}",l:"{lb}"}}'
-                        for lh, th, hr, lb in all_fotos)
-                    P.append(f'''
-<div style="position:relative;margin-bottom:4px;border-radius:5px;overflow:hidden;background:#111">
+            # Carousel foto — menggunakan JavaScript (berjalan di components.html iframe)
+            if all_fotos:
+                n_foto  = len(all_fotos)
+                slides  = ",".join(
+                    f'{{s:"{lh}",f:"{th}",h:"{hr}",l:"{lb}"}}'
+                    for lh, th, hr, lb in all_fotos)
+                btn_css = ("background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);"
+                           "color:#fff;font-size:17px;line-height:1;width:28px;height:28px;"
+                           "border-radius:6px;cursor:pointer;flex-shrink:0")
+                P.append(f'''
+<div style="position:relative;margin-bottom:8px;border-radius:8px;overflow:hidden;background:#0F172A">
   <img id="simg" src="{all_fotos[0][0]}"
        style="width:100%;height:auto;display:block"
        referrerpolicy="no-referrer"
        onerror="this.src='{all_fotos[0][1]}';this.onerror=null;">
   <div style="position:absolute;bottom:0;left:0;right:0;
-              background:linear-gradient(transparent,rgba(0,0,0,0.6));
-              padding:5px 8px;display:flex;align-items:center;gap:6px">
-    <button id="btnP"
-            style="background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.4);
-                   color:white;font-size:18px;line-height:1;width:28px;height:28px;
-                   border-radius:4px;cursor:pointer;flex-shrink:0">&#8249;</button>
-    <span id="slbl" style="color:white;font-size:10px;font-weight:600;
+              background:linear-gradient(transparent,rgba(0,0,0,.65));
+              padding:6px 8px;display:flex;align-items:center;gap:6px">
+    <button id="btnP" style="{btn_css}">&#8249;</button>
+    <span id="slbl" style="color:#fff;font-size:11px;font-weight:600;
                            flex:1;text-align:center">Depan 1/{n_foto}</span>
-    <button id="btnN"
-            style="background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.4);
-                   color:white;font-size:18px;line-height:1;width:28px;height:28px;
-                   border-radius:4px;cursor:pointer;flex-shrink:0">&#8250;</button>
+    <button id="btnN" style="{btn_css}">&#8250;</button>
     <a id="slnk" href="{all_fotos[0][2]}" target="_blank"
-       style="color:rgba(255,255,255,0.8);font-size:9px;
-              text-decoration:none;white-space:nowrap;flex-shrink:0">↗ buka</a>
+       style="color:rgba(255,255,255,.85);font-size:11px;
+              text-decoration:none;white-space:nowrap;flex-shrink:0">Buka ↗</a>
   </div>
 </div>
 <script>
@@ -1300,144 +1205,165 @@ with tab_peta:
 }})();
 </script>''')
 
-                # Link Street View
-                sv = generate_streetview_url(row.get("Latitude"), row.get("Longitude"))
-                foto_hint = f' | {len(all_fotos)} foto — geser ‹ ›' if all_fotos else ''
-                P.append(f'<div style="display:flex;gap:8px;margin:2px 0 4px;flex-wrap:wrap;'
-                         f'border-bottom:1px solid #efefef;padding-bottom:3px">'
-                         f'<a href="{sv}" target="_blank" '
-                         f'style="color:#2980b9;text-decoration:none;font-size:10px">'
-                         f'🔍 Street View ↗</a>'
-                         f'<span style="color:#bbb;font-size:9px">{foto_hint}</span></div>')
+            # Link Street View
+            sv = generate_streetview_url(row.get("Latitude"), row.get("Longitude"))
+            foto_hint = f'{len(all_fotos)} foto' if all_fotos else 'Tidak ada foto'
+            P.append(f'<div style="display:flex;justify-content:space-between;align-items:center;'
+                     f'margin:2px 0 6px;font-size:12px">'
+                     f'<a href="{sv}" target="_blank" style="color:{NAVY};text-decoration:none;'
+                     f'font-weight:600">Buka Street View ↗</a>'
+                     f'<span style="color:{SLATE}">{foto_hint}</span></div>')
 
-                # Harga card (Data Pembanding)
-                if not is_s:
-                    ht     = row.get("Harga_Total")
-                    ht_str = format_currency(ht) if ht and not pd.isna(ht) else "—"
-                    P.append(f'<div style="display:flex;gap:4px;margin:3px 0">'
-                             f'<div style="flex:1;background:#f0fdf4;border-left:2px solid #27ae60;'
-                             f'padding:3px 6px;border-radius:0 3px 3px 0">'
-                             f'<div style="font-size:8px;color:#999;text-transform:uppercase;'
-                             f'letter-spacing:.4px">Harga Total</div>'
-                             f'<div style="font-size:11px;font-weight:700;color:#1a7a4a">{ht_str}</div></div>'
-                             f'<div style="flex:1;background:#eff6ff;border-left:2px solid #2980b9;'
-                             f'padding:3px 6px;border-radius:0 3px 3px 0">'
-                             f'<div style="font-size:8px;color:#999;text-transform:uppercase;'
-                             f'letter-spacing:.4px">Harga/m²</div>'
-                             f'<div style="font-size:11px;font-weight:700;color:#1a4a7a">{harga_d}</div></div></div>')
+            # Harga (Data Pembanding)
+            if not is_s:
+                ht     = row.get("Harga_Total")
+                ht_str = format_currency(ht) if ht and not pd.isna(ht) else "—"
+                box = (f'background:#F8FAFC;border:1px solid {LINE};border-radius:8px;padding:8px 10px')
+                P.append(f'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:6px 0">'
+                         f'<div style="{box}"><div style="font-size:10.5px;color:{SLATE};'
+                         f'text-transform:uppercase;letter-spacing:.05em">Harga total</div>'
+                         f'<div style="font-size:13.5px;font-weight:700;color:#1E293B">{ht_str}</div></div>'
+                         f'<div style="{box};background:{NAVY};border-color:{NAVY}">'
+                         f'<div style="font-size:10.5px;color:#C9D8E8;text-transform:uppercase;'
+                         f'letter-spacing:.05em">Harga tanah / m²</div>'
+                         f'<div style="font-size:13.5px;font-weight:700;color:#fff">{harga_d}</div></div></div>')
 
-                # Info sections
-                if is_s:
-                    P.append(sh("📋", "Identitas"))
-                    P.append(r2("Pemilik", safe_get(row,"Pemilik"),
-                                "Jenis",   safe_get(row,"Jenis_Properti")))
-                    P.append(r2("Kode Inspeksi", safe_get(row,"Kode_Inspeksi"),
-                                "Tgl Inspeksi",  safe_get(row,"Tanggal_Inspeksi")))
-                    P.append(r2("Reviewer",       safe_get(row,"Reviewer"),
-                                "Pemberi Tugas",  safe_get(row,"Pemberi_Tugas")))
+            # Info sections
+            if is_s:
+                P.append(sh("Identitas"))
+                P.append(r2("Pemilik", safe_get(row,"Pemilik"),
+                            "Jenis",   safe_get(row,"Jenis_Properti")))
+                P.append(r2("Kode inspeksi", safe_get(row,"Kode_Inspeksi"),
+                            "Tgl. inspeksi", safe_get(row,"Tanggal_Inspeksi")))
+                P.append(r2("Reviewer",      safe_get(row,"Reviewer"),
+                            "Pemberi tugas", safe_get(row,"Pemberi_Tugas")))
+            else:
+                P.append(sh("Properti"))
+                thn_v = int(tahun_d) if tahun_d and not pd.isna(tahun_d) else "—"
+                P.append(r2("Jenis", safe_get(row,"Jenis_Properti"), "Tahun", thn_v))
+
+            P.append(sh("Lokasi"))
+            P.append(r1("Alamat",    safe_get(row,"Alamat")))
+            P.append(r1("Kompleks",  safe_get(row,"Kompleks")))
+            P.append(r2("Kelurahan", safe_get(row,"Kelurahan"),
+                         "Kecamatan", safe_get(row,"Kecamatan")))
+            P.append(r2("Kota",     safe_get(row,"Kota"),
+                         "Propinsi", safe_get(row,"Propinsi")))
+
+            P.append(sh("Fisik"))
+            if is_s:
+                # Tentukan apakah ada data bangunan dari sheet terpisah
+                kode_ins = safe_get(row, "Kode_Inspeksi")
+                bgn_rows = (
+                    df_bangunan[df_bangunan["Kode_Inspeksi"] == kode_ins]
+                    if not df_bangunan.empty and kode_ins and kode_ins != "—"
+                       and "Kode_Inspeksi" in df_bangunan.columns
+                    else pd.DataFrame()
+                )
+                if not bgn_rows.empty:
+                    # Ada data dari Data Bangunan — tampilkan Luas Tanah saja di baris pertama
+                    P.append(r1("Luas tanah", _luas("Luas_Tanah")))
+                    for _, br in bgn_rows.iterrows():
+                        jenis_bgn = str(br.get("Jenis_Bangunan", "")) if pd.notna(br.get("Jenis_Bangunan")) else "—"
+                        luas_bgn  = br.get("Luas_Bangunan")
+                        luas_bgn_fmt = f"{luas_bgn:,.0f} m²" if pd.notna(luas_bgn) else "—"
+                        P.append(r2("Jenis bangunan", jenis_bgn, "Luas bangunan", luas_bgn_fmt))
                 else:
-                    P.append(sh("📋", "Properti"))
-                    thn_v = int(tahun_d) if tahun_d and not pd.isna(tahun_d) else "—"
-                    P.append(r2("Jenis", safe_get(row,"Jenis_Properti"), "Tahun", thn_v))
+                    P.append(r2("Luas tanah",    _luas("Luas_Tanah"),
+                                 "Luas bangunan", _luas("Luas_Bangunan")))
+            else:
+                P.append(r2("Luas tanah",    _luas("Luas_Tanah"),
+                             "Luas bangunan", _luas("Luas_Bangunan")))
+                P.append(r2("Kondisi bangunan", safe_get(row,"Kondisi_Bangunan"),
+                            "Kelas bangunan",   safe_get(row,"Kelas_Bangunan")))
+            P.append(r2("Peruntukan",  safe_get(row,"Peruntukan"),
+                         "Kepemilikan", safe_get(row,"Kepemilikan")))
+            if not is_s:
+                P.append(sh("Kontak"))
+                P.append(r2("Nama", safe_get(row,"Kontak"),
+                            "Telepon", safe_get(row,"Telp")))
 
-                P.append(sh("📍", "Lokasi"))
-                P.append(r1("Alamat",    safe_get(row,"Alamat")))
-                P.append(r1("Kompleks",  safe_get(row,"Kompleks")))
-                P.append(r2("Kelurahan", safe_get(row,"Kelurahan"),
-                             "Kecamatan", safe_get(row,"Kecamatan")))
-                P.append(r2("Kota",     safe_get(row,"Kota"),
-                             "Propinsi", safe_get(row,"Propinsi")))
+            P.append('</div>')  # tutup scrollable container
 
-                P.append(sh("📐", "Fisik"))
-                if is_s:
-                    # Tentukan apakah ada data bangunan dari sheet terpisah
-                    kode_ins = safe_get(row, "Kode_Inspeksi")
-                    bgn_rows = (
-                        df_bangunan[df_bangunan["Kode_Inspeksi"] == kode_ins]
-                        if not df_bangunan.empty and kode_ins and kode_ins != "—"
-                           and "Kode_Inspeksi" in df_bangunan.columns
-                        else pd.DataFrame()
-                    )
-                    if not bgn_rows.empty:
-                        # Ada data dari Data Bangunan — tampilkan Luas Tanah saja di baris pertama
-                        P.append(r1("Luas Tanah", _luas("Luas_Tanah")))
-                        for _, br in bgn_rows.iterrows():
-                            jenis_bgn = str(br.get("Jenis_Bangunan", "")) if pd.notna(br.get("Jenis_Bangunan")) else "—"
-                            luas_bgn  = br.get("Luas_Bangunan")
-                            luas_bgn_fmt = f"{luas_bgn:,.0f} m²" if pd.notna(luas_bgn) else "—"
-                            P.append(r2("Jenis Bangunan", jenis_bgn, "Luas Bangunan", luas_bgn_fmt))
-                    else:
-                        P.append(r2("Luas Tanah",    _luas("Luas_Tanah"),
-                                     "Luas Bangunan", _luas("Luas_Bangunan")))
-                else:
-                    P.append(r2("Luas Tanah",    _luas("Luas_Tanah"),
-                                 "Luas Bangunan", _luas("Luas_Bangunan")))
-                if not is_s:
-                    P.append(r2("Kondisi Bgn", safe_get(row,"Kondisi_Bangunan"),
-                                "Kelas Bgn",   safe_get(row,"Kelas_Bangunan")))
-                P.append(r2("Peruntukan",  safe_get(row,"Peruntukan"),
-                             "Kepemilikan", safe_get(row,"Kepemilikan")))
-                if not is_s:
-                    P.append(sh("📞", "Kontak"))
-                    P.append(r2("Nama", safe_get(row,"Kontak"),
-                                "Telp", safe_get(row,"Telp")))
-
-                P.append('</div>')  # tutup scrollable container
-
-                # Render via components.html agar JavaScript carousel berjalan
-                components.html("".join(P), height=625, scrolling=False)
+            # Render via components.html agar JavaScript carousel berjalan
+            components.html("".join(P), height=640, scrolling=False)
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # TAB 3 — TABEL DATA
 # ═══════════════════════════════════════════════════════════════════════════════
 with tab_tabel:
-    if filtered.empty:
-        st.warning("Tidak ada data yang sesuai dengan filter.")
+    all_cols = [c for c in filtered.columns if not c.startswith("_")]
+    default_cols = [c for c in all_cols if c not in ("Latitude", "Longitude", "Tahun_Bersih")]
+
+    t1, t2, t3 = st.columns([4, 1.3, 1.3], vertical_alignment="bottom")
+    cari = t1.text_input("Cari", placeholder="Cari alamat, kelurahan, kecamatan, nomor…",
+                         label_visibility="collapsed")
+    with t2.popover("Atur kolom", icon=":material/view_column:", use_container_width=True):
+        disp_cols = st.multiselect("Kolom yang ditampilkan", all_cols, default=default_cols,
+                                   format_func=lambda c: COL_LABELS.get(c, c.replace("_", " ")))
+
+    disp_df = filtered[disp_cols].copy() if disp_cols else pd.DataFrame()
+    if cari.strip() and not disp_df.empty:
+        _txt = filtered[all_cols].astype(str).agg(" ".join, axis=1).str.lower()
+        disp_df = disp_df[_txt.str.contains(re.escape(cari.strip().lower()), na=False)]
+
+    t3.download_button(
+        label="Unduh Excel",
+        icon=":material/download:",
+        data=to_excel_bytes(disp_df),
+        file_name=f"data_tanah_{city_label}_{selected_year}.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        use_container_width=True,
+        disabled=disp_df.empty,
+    )
+
+    if disp_cols:
+        col_cfg = {c: COL_LABELS.get(c, c.replace("_", " ")) for c in disp_cols}
+        for c in ("Harga_Tanah", "Harga_Total"):
+            if c in disp_cols:
+                col_cfg[c] = st.column_config.NumberColumn(COL_LABELS[c], format="localized")
+        for c in ("Luas_Tanah", "Luas_Bangunan"):
+            if c in disp_cols:
+                col_cfg[c] = st.column_config.NumberColumn(COL_LABELS[c], format="localized")
+        for c in ("Tahun", "Tahun_Bersih"):
+            if c in disp_cols and pd.api.types.is_numeric_dtype(disp_df[c]):
+                col_cfg[c] = st.column_config.NumberColumn(COL_LABELS.get(c, c), format="%d")
+        view_df = disp_df.copy()
+        for c in ("Foto", "Foto_Jalan", "Foto_Dalam", "Foto_Samping_Kanan",
+                  "Foto_Samping_Kiri", "Gambar_Situasi"):
+            if c in disp_cols:
+                view_df[c] = view_df[c].where(view_df[c].astype(str).str.startswith("http"))
+                col_cfg[c] = st.column_config.LinkColumn(COL_LABELS.get(c, c), display_text="Buka ↗")
+
+        st.caption(f"Menampilkan {len(disp_df)} dari {len(filtered)} baris.")
+        st.dataframe(view_df, use_container_width=True, height=520, hide_index=True,
+                     column_config=col_cfg)
     else:
-        outliers_df = filtered[filtered["_outlier"]]
-        if not outliers_df.empty:
-            with st.expander(f"⚠️ {len(outliers_df)} Data Outlier Terdeteksi — klik untuk lihat detail"):
-                show_cols_out = [c for c in ["Nomor", "Alamat", "Kecamatan", "Kota",
-                                              "Tahun_Bersih", "Luas_Tanah", "Harga_Tanah"]
-                                 if c in outliers_df.columns]
-                st.dataframe(outliers_df[show_cols_out], use_container_width=True)
+        st.info("Pilih minimal satu kolom melalui tombol **Atur kolom**.")
 
-        all_cols = [c for c in filtered.columns if not c.startswith("_")]
-        default_cols = [c for c in all_cols if c not in ("Latitude", "Longitude", "Tahun_Bersih")]
-        disp_cols = st.multiselect("Pilih kolom yang ditampilkan:", all_cols, default=default_cols)
-
-        if disp_cols:
-            disp_df = filtered[disp_cols].copy()
-            col_cfg = {}
-            if "Harga_Tanah" in disp_cols:
-                col_cfg["Harga_Tanah"] = st.column_config.NumberColumn(
-                    "Harga Tanah (Rp/m²)", format="Rp %.0f"
-                )
-            if "Luas_Tanah" in disp_cols:
-                col_cfg["Luas_Tanah"] = st.column_config.NumberColumn("Luas Tanah (m²)", format="%.0f m²")
-            if "Luas_Bangunan" in disp_cols:
-                col_cfg["Luas_Bangunan"] = st.column_config.NumberColumn("Luas Bangunan (m²)", format="%.0f m²")
-
-            st.dataframe(disp_df, use_container_width=True, height=500, column_config=col_cfg)
-
-            dl_col1, dl_col2 = st.columns([1, 5])
-            with dl_col1:
-                st.download_button(
-                    label="📥 Download Excel",
-                    data=to_excel_bytes(disp_df),
-                    file_name=f"data_tanah_{city_label}_{selected_year}.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                )
+    outliers_df = filtered[filtered["_outlier"]]
+    if not outliers_df.empty:
+        with st.expander(f"{len(outliers_df)} data outlier terdeteksi (metode IQR 1,5×)",
+                         icon=":material/warning:"):
+            show_cols_out = [c for c in ["Nomor", "Alamat", "Kecamatan", "Kota",
+                                          "Tahun_Bersih", "Luas_Tanah", "Harga_Tanah"]
+                             if c in outliers_df.columns]
+            st.dataframe(
+                outliers_df[show_cols_out], use_container_width=True, hide_index=True,
+                column_config={
+                    **{c: COL_LABELS.get(c, c) for c in show_cols_out},
+                    "Tahun_Bersih": st.column_config.NumberColumn("Tahun", format="%d"),
+                    "Luas_Tanah":   st.column_config.NumberColumn(COL_LABELS["Luas_Tanah"], format="localized"),
+                    "Harga_Tanah":  st.column_config.NumberColumn(COL_LABELS["Harga_Tanah"], format="localized"),
+                },
+            )
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # TAB 4 — ANALISA PERBANDINGAN
 # ═══════════════════════════════════════════════════════════════════════════════
 with tab_analisa:
-    st.subheader("🔄 Analisa Perbandingan & Indikasi Nilai")
-    st.markdown(
-        "Pilih data pembanding, masukkan parameter koreksi, lalu sistem menghitung "
-        "**harga indikasi** dan **koefisien variasi (CV)** sesuai standar penilaian."
-    )
+    st.caption("Lengkapi data obyek, atur parameter koreksi, lalu pilih data pembanding. "
+               "Harga indikasi dan koefisien variasi (CV) dihitung otomatis.")
 
     # ── Lookup tables ─────────────────────────────────────────────────────────
     _ROAD_SCORE = {"Arteri": 4, "Kolektor": 3, "Lokal": 2, "Lingkungan": 1}
@@ -1471,32 +1397,31 @@ with tab_analisa:
                 return k
         return "Lainnya"
 
-    if filtered.empty:
-        st.warning("Tidak ada data yang sesuai dengan filter.")
-    else:
-        is_subject_mask = filtered["Nomor"].astype(str).str.lower().str.contains("obyek", na=False)
-        subject_rows    = filtered[is_subject_mask]
-        comparable_rows = filtered[~is_subject_mask]
+    is_subject_mask = filtered["Nomor"].astype(str).str.lower().str.contains("obyek", na=False)
+    subject_rows    = filtered[is_subject_mask]
+    comparable_rows = filtered[~is_subject_mask]
 
-        col_subj, col_comp = st.columns([1, 2])
+    col_subj, col_param = st.columns(2, gap="medium")
 
-        with col_subj:
-            st.markdown("#### 🏠 Obyek Penilaian")
+    with col_subj:
+        with st.container(border=True):
+            section_title("Obyek penilaian", 1)
             if not subject_rows.empty:
                 s = subject_rows.iloc[0]
                 subj_luas  = float(s.get("Luas_Tanah") or 0)
                 _h = s.get("Harga_Tanah")
                 subj_harga = float(_h) if (_h is not None and not pd.isna(_h)) else 0.0
-                harga_disp = format_currency(subj_harga) + "/m²" if subj_harga > 0 else "belum dinilai"
-                st.info(
-                    f"**Alamat:** {s.get('Alamat', '-')}  \n"
-                    f"**Kecamatan:** {s.get('Kecamatan', '-')}  \n"
-                    f"**Luas Tanah:** {subj_luas:,.0f} m²  \n"
-                    f"**Kepemilikan:** {s.get('Kepemilikan', '-')}  \n"
-                    f"**Harga Indikasi Awal:** {harga_disp}"
-                )
+                harga_disp = format_currency(subj_harga) + "/m²" if subj_harga > 0 else "Belum dinilai"
+                _kv = [("Alamat", s.get("Alamat", "-")), ("Kecamatan", s.get("Kecamatan", "-")),
+                       ("Luas tanah", f"{subj_luas:,.0f} m²".replace(",", ".")),
+                       ("Kepemilikan", s.get("Kepemilikan", "-")), ("Peruntukan", s.get("Peruntukan", "-")),
+                       ("Harga awal", harga_disp)]
+                st.markdown(
+                    '<dl class="kv">' + "".join(
+                        f"<dt>{k}</dt><dd>{'—' if pd.isna(v) else v}</dd>" for k, v in _kv
+                    ) + "</dl>", unsafe_allow_html=True)
                 _kep_def = _detect_kep(s.get("Kepemilikan", "SHM"))
-                subj_kep = st.selectbox("Bukti Kepemilikan Obyek", _OWN_OPTS,
+                subj_kep = st.selectbox("Bukti kepemilikan", _OWN_OPTS,
                                         index=_OWN_OPTS.index(_kep_def) if _kep_def in _OWN_OPTS else 0,
                                         key="an_subj_kep")
                 # Default tahun dari Tanggal Inspeksi
@@ -1509,230 +1434,247 @@ with tab_analisa:
                 # Skor peruntukan obyek untuk auto-koreksi
                 _subj_perun_score = _peruntukan_score(s.get("Peruntukan", ""))
             else:
-                st.warning("Tidak ada baris 'Obyek Penilaian' di data. Masukkan manual:")
-                subj_luas  = st.number_input("Luas Tanah Obyek (m²)", value=0.0, min_value=0.0, step=10.0)
+                st.warning("Baris 'Obyek Penilaian' tidak ditemukan. Isi data obyek secara manual.",
+                           icon=":material/edit_note:")
+                subj_luas  = st.number_input("Luas tanah obyek (m²)", value=0.0, min_value=0.0, step=10.0)
                 subj_harga = 0.0
-                subj_kep   = st.selectbox("Bukti Kepemilikan Obyek", _OWN_OPTS, key="an_subj_kep")
+                subj_kep   = st.selectbox("Bukti kepemilikan", _OWN_OPTS, key="an_subj_kep")
                 _default_ref_year = 2025
                 _subj_perun_score = None
 
-            st.markdown("##### 🛣️ Lokasi Obyek")
-            subj_road_cls = st.selectbox("Kelas Jalan Obyek", _ROAD_OPTS, index=1, key="an_subj_road_cls")
-            subj_lajur    = st.selectbox("Jumlah Lajur Obyek", _LANE_OPTS, index=2, key="an_subj_lajur")
+            jc1, jc2 = st.columns(2)
+            subj_road_cls = jc1.selectbox("Kelas jalan", _ROAD_OPTS, index=1, key="an_subj_road_cls")
+            subj_lajur    = jc2.selectbox("Jumlah lajur", _LANE_OPTS, index=2, key="an_subj_lajur")
 
-            st.markdown("#### ⚙️ Parameter Koreksi")
-            ref_year       = st.number_input("Tahun Referensi Penilaian", value=_default_ref_year,
-                                              min_value=2000, max_value=2100, step=1)
-            diskon_pct     = st.number_input("Diskon Penawaran (%)", value=10.0,
-                                              min_value=0.0, max_value=50.0, step=0.5,
-                                              help="Diskon dari harga penawaran ke harga transaksi (berlaku untuk semua data pembanding)")
-            time_adj_pct   = st.number_input("Koreksi Waktu (%/tahun)", value=5.0,
-                                              min_value=0.0, max_value=50.0, step=0.5,
-                                              help="Kenaikan harga pasar per tahun (positif = pasar naik)")
-            size_adj_pct   = st.number_input("Koreksi Luas (%/100m²)", value=0.5,
-                                              min_value=0.0, max_value=20.0, step=0.5,
-                                              help="Penyesuaian harga akibat perbedaan luas per 100m²")
-            lokasi_ppt     = st.number_input("Koreksi Lokasi (%/poin)", value=5.0,
-                                              min_value=0.0, max_value=20.0, step=0.5,
-                                              help="Penyesuaian per poin perbedaan skor lokasi (kelas jalan + jumlah lajur)")
+    with col_param:
+        with st.container(border=True):
+            section_title("Parameter koreksi", 2)
+            ref_year = st.number_input("Tahun referensi penilaian", value=_default_ref_year,
+                                       min_value=2000, max_value=2100, step=1)
+            pc1, pc2 = st.columns(2)
+            diskon_pct   = pc1.number_input("Diskon penawaran (%)", value=10.0,
+                                            min_value=0.0, max_value=50.0, step=0.5,
+                                            help="Diskon dari harga penawaran ke harga transaksi (berlaku untuk semua data pembanding)")
+            time_adj_pct = pc2.number_input("Waktu (%/tahun)", value=5.0,
+                                            min_value=0.0, max_value=50.0, step=0.5,
+                                            help="Kenaikan harga pasar per tahun (positif = pasar naik)")
+            size_adj_pct = pc1.number_input("Luas (%/100 m²)", value=0.5,
+                                            min_value=0.0, max_value=20.0, step=0.5,
+                                            help="Penyesuaian harga akibat perbedaan luas per 100m²")
+            lokasi_ppt   = pc2.number_input("Lokasi (%/poin)", value=5.0,
+                                            min_value=0.0, max_value=20.0, step=0.5,
+                                            help="Penyesuaian per poin perbedaan skor lokasi (kelas jalan + jumlah lajur)")
 
-        with col_comp:
-            st.markdown("#### 📋 Pilih Data Pembanding")
-            if comparable_rows.empty:
-                st.warning("Tidak ada data pembanding tersedia.")
+    comp = None
+    with st.container(border=True):
+        section_title("Data pembanding & penyesuaian", 3)
+        if comparable_rows.empty:
+            st.warning("Tidak ada data pembanding tersedia.")
+        else:
+            nomor_opts = comparable_rows["Nomor"].astype(str).tolist()
+            _lbl = dict(zip(
+                nomor_opts,
+                (comparable_rows["Nomor"].astype(str) + " · " +
+                 comparable_rows.get("Alamat", pd.Series("", index=comparable_rows.index))
+                 .fillna("").astype(str).str.slice(0, 40)).tolist(),
+            ))
+            selected   = st.multiselect(
+                "Data pembanding (disarankan 3–5 data)",
+                options=nomor_opts,
+                default=nomor_opts[:min(3, len(nomor_opts))],
+                format_func=lambda n: _lbl.get(n, n),
+            )
+
+            if not selected:
+                st.info("Pilih minimal satu data pembanding untuk memulai perhitungan.")
             else:
-                nomor_opts = comparable_rows["Nomor"].astype(str).tolist()
-                selected   = st.multiselect(
-                    "Pilih nomor data pembanding (disarankan 3–5 data):",
-                    options=nomor_opts,
-                    default=nomor_opts[:min(3, len(nomor_opts))],
-                )
+                comp = (comparable_rows[comparable_rows["Nomor"].astype(str).isin(selected)]
+                        .copy().reset_index(drop=True))
 
-                if selected:
-                    comp = (comparable_rows[comparable_rows["Nomor"].astype(str).isin(selected)]
-                            .copy().reset_index(drop=True))
-
-                    # ── Editable per-comparable adjustment table ─────────────────
-                    st.markdown("##### ✏️ Penyesuaian Per Data Pembanding")
-                    st.caption(
-                        "Kepemilikan & Peruntukan otomatis terbaca dari data. "
-                        "Isi Kelas Jalan, Jumlah Lajur, dan koreksi bisa diubah manual."
-                    )
-
-                    # Auto-hitung Kor. Peruntukan dari kategori penggunaan tanah
-                    def _perun_adj(comp_perun_val):
-                        comp_score = _peruntukan_score(comp_perun_val)
-                        if _subj_perun_score is None or comp_score is None:
-                            return 0.0
-                        return round((_subj_perun_score - comp_score) * 2.5, 1)
-
-                    edit_init = pd.DataFrame({
-                        "No":                   comp["Nomor"].astype(str).tolist(),
-                        "Alamat":               comp["Alamat"].fillna("—").tolist() if "Alamat" in comp.columns else ["—"] * len(comp),
-                        "Kepemilikan":          [
-                            _detect_kep(comp.at[i, "Kepemilikan"])
-                            if "Kepemilikan" in comp.columns else "Lainnya"
-                            for i in range(len(comp))
-                        ],
-                        "Kelas Jalan":          ["Lokal"]   * len(comp),
-                        "Jumlah Lajur":         ["2 lajur"] * len(comp),
-                        "Kor. Peruntukan (%)":  [
-                            _perun_adj(comp.at[i, "Peruntukan"]) if "Peruntukan" in comp.columns else 0.0
-                            for i in range(len(comp))
-                        ],
-                    })
-
-                    # Simpan ke session_state agar perubahan pengguna tidak hilang saat rerun
-                    _ss_adj_key = f"adj_df_{'_'.join(sorted(str(x) for x in selected))}"
-                    if _ss_adj_key not in st.session_state:
-                        st.session_state[_ss_adj_key] = edit_init.copy()
-
-                    edited = st.data_editor(
-                        st.session_state[_ss_adj_key],
-                        use_container_width=True,
-                        column_config={
-                            "No":                  st.column_config.TextColumn("No", disabled=True, width="small"),
-                            "Alamat":              st.column_config.TextColumn("Alamat", disabled=True, width="large"),
-                            "Kepemilikan":         st.column_config.SelectboxColumn("Kepemilikan", options=_OWN_OPTS, width="medium"),
-                            "Kelas Jalan":         st.column_config.SelectboxColumn("Kelas Jalan", options=_ROAD_OPTS, width="medium"),
-                            "Jumlah Lajur":        st.column_config.SelectboxColumn("Jumlah Lajur", options=_LANE_OPTS, width="medium"),
-                            "Kor. Peruntukan (%)": st.column_config.NumberColumn("Kor. Peruntukan (%)", format="%.1f%%",
-                                                                                   min_value=-50.0, max_value=50.0, step=0.5, width="medium"),
-                        },
-                        hide_index=True,
-                    )
-                    # Simpan hasil edit kembali ke session_state
-                    st.session_state[_ss_adj_key] = edited
-
-                    # ── Compute all adjustments ──────────────────────────────────
-                    subj_loc_score = _road_total(subj_road_cls, subj_lajur)
-
-                    # Kepemilikan: SHM vs non-SHM = ±5% (flat, bukan per-ranking)
-                    def _kep_adj(comp_kep):
-                        if subj_kep == "SHM" and str(comp_kep) != "SHM":
-                            return 5.0   # pembanding lebih rendah → sesuaikan naik
-                        elif subj_kep != "SHM" and str(comp_kep) == "SHM":
-                            return -5.0  # pembanding lebih tinggi → sesuaikan turun
+                # Auto-hitung Kor. Peruntukan dari kategori penggunaan tanah
+                def _perun_adj(comp_perun_val):
+                    comp_score = _peruntukan_score(comp_perun_val)
+                    if _subj_perun_score is None or comp_score is None:
                         return 0.0
+                    return round((_subj_perun_score - comp_score) * 2.5, 1)
 
-                    comp["Kor_Kepemilikan_%"] = edited["Kepemilikan"].apply(_kep_adj)
-                    comp["Kor_Lokasi_%"] = edited.apply(
-                        lambda r: (subj_loc_score - _road_total(r["Kelas Jalan"], r["Jumlah Lajur"])) * lokasi_ppt,
-                        axis=1,
-                    )
-                    comp["Kor_Peruntukan_%"] = pd.to_numeric(
-                        edited["Kor. Peruntukan (%)"], errors="coerce"
-                    ).fillna(0.0).values
+                edit_init = pd.DataFrame({
+                    "No":                   comp["Nomor"].astype(str).tolist(),
+                    "Alamat":               comp["Alamat"].fillna("—").tolist() if "Alamat" in comp.columns else ["—"] * len(comp),
+                    "Kepemilikan":          [
+                        _detect_kep(comp.at[i, "Kepemilikan"])
+                        if "Kepemilikan" in comp.columns else "Lainnya"
+                        for i in range(len(comp))
+                    ],
+                    "Kelas Jalan":          ["Lokal"]   * len(comp),
+                    "Jumlah Lajur":         ["2 lajur"] * len(comp),
+                    "Kor. Peruntukan (%)":  [
+                        _perun_adj(comp.at[i, "Peruntukan"]) if "Peruntukan" in comp.columns else 0.0
+                        for i in range(len(comp))
+                    ],
+                })
 
-                    comp["Selisih_Tahun"]  = ref_year - comp["Tahun_Bersih"].fillna(ref_year)
-                    comp["Kor_Waktu_%"]    = comp["Selisih_Tahun"] * time_adj_pct
-                    if subj_luas > 0:
-                        comp["Selisih_Luas"] = comp["Luas_Tanah"].fillna(subj_luas) - subj_luas
-                        comp["Kor_Luas_%"]   = -(comp["Selisih_Luas"] / 100) * size_adj_pct
-                    else:
-                        comp["Kor_Luas_%"]   = 0.0
+                # Simpan ke session_state agar perubahan pengguna tidak hilang saat rerun
+                _ss_adj_key = f"adj_df_{'_'.join(sorted(str(x) for x in selected))}"
+                if _ss_adj_key not in st.session_state:
+                    st.session_state[_ss_adj_key] = edit_init.copy()
 
-                    # ── Total & bobot penyesuaian ────────────────────────────────
-                    comp["Kor_Diskon_%"] = -diskon_pct
-                    _kor_cols = ["Kor_Diskon_%", "Kor_Waktu_%", "Kor_Luas_%",
-                                 "Kor_Kepemilikan_%", "Kor_Lokasi_%", "Kor_Peruntukan_%"]
-                    comp["Total_Penyesuaian_%"] = comp[_kor_cols].sum(axis=1).round(2)
-                    comp["Total_Absolut_%"]     = comp[_kor_cols].abs().sum(axis=1).round(2)
-                    # Bobot: berbanding terbalik dengan total absolut
-                    _inv = 1.0 / (comp["Total_Absolut_%"] + 0.01)
-                    comp["Bobot_%"] = (_inv / _inv.sum() * 100).round(1)
-                    # Harga Final = Harga Awal × (1 + Total Penyesuaian) × Bobot
-                    comp["Harga_Stl_Koreksi"] = comp["Harga_Tanah"] * (1 + comp["Total_Penyesuaian_%"] / 100)
-                    comp["Harga_Final"]        = comp["Harga_Stl_Koreksi"] * comp["Bobot_%"] / 100
+                st.caption("Kepemilikan dan peruntukan terbaca otomatis dari data. "
+                           "Kolom berikon pensil dapat diubah langsung di tabel.")
+                edited = st.data_editor(
+                    st.session_state[_ss_adj_key],
+                    use_container_width=True,
+                    column_config={
+                        "No":                  st.column_config.TextColumn("No", disabled=True, width="small"),
+                        "Alamat":              st.column_config.TextColumn("Alamat", disabled=True, width="medium"),
+                        "Kepemilikan":         st.column_config.SelectboxColumn("Kepemilikan", options=_OWN_OPTS, width="small"),
+                        "Kelas Jalan":         st.column_config.SelectboxColumn("Kelas Jalan", options=_ROAD_OPTS, width="small"),
+                        "Jumlah Lajur":        st.column_config.SelectboxColumn("Jumlah Lajur", options=_LANE_OPTS, width="small"),
+                        "Kor. Peruntukan (%)": st.column_config.NumberColumn("Kor. Peruntukan", format="%.1f%%",
+                                                                               min_value=-50.0, max_value=50.0, step=0.5, width="small"),
+                    },
+                    hide_index=True,
+                )
+                # Simpan hasil edit kembali ke session_state
+                st.session_state[_ss_adj_key] = edited
 
-                    # ── Summary table ────────────────────────────────────────────
-                    tbl = comp[[
-                        "Nomor", "Alamat", "Tahun_Bersih", "Luas_Tanah",
-                        "Harga_Tanah",
-                        "Kor_Diskon_%", "Kor_Waktu_%", "Kor_Luas_%",
-                        "Kor_Kepemilikan_%", "Kor_Lokasi_%", "Kor_Peruntukan_%",
-                        "Total_Penyesuaian_%", "Total_Absolut_%",
-                        "Bobot_%",
-                        "Harga_Stl_Koreksi",
-                        "Harga_Final",
-                    ]].copy()
-                    tbl.columns = [
-                        "Nomor", "Alamat", "Tahun", "Luas (m²)",
-                        "Harga Awal",
-                        "Kor. Diskon (%)", "Kor. Waktu (%)", "Kor. Luas (%)",
-                        "Kor. Kepemilikan (%)", "Kor. Lokasi (%)", "Kor. Peruntukan (%)",
-                        "Total Penyesuaian (%)", "Total Absolut (%)",
-                        "Bobot (%)",
-                        "Harga Terkoreksi",
-                        "Harga Final",
-                    ]
-                    st.markdown("##### 📊 Hasil Koreksi")
-                    st.dataframe(
-                        tbl,
-                        use_container_width=True,
-                        column_config={
-                            "Harga Awal":              st.column_config.NumberColumn("Harga Awal (Rp/m²)",      format="%.0f"),
-                            "Harga Terkoreksi":        st.column_config.NumberColumn("Harga Terkoreksi (Rp/m²)", format="%.0f"),
-                            "Harga Final":             st.column_config.NumberColumn("Harga Final (Rp/m²)",     format="%.0f"),
-                            "Kor. Diskon (%)":         st.column_config.NumberColumn(format="%.1f %%"),
-                            "Kor. Waktu (%)":          st.column_config.NumberColumn(format="%.1f %%"),
-                            "Kor. Luas (%)":           st.column_config.NumberColumn(format="%.1f %%"),
-                            "Kor. Kepemilikan (%)":    st.column_config.NumberColumn(format="%.1f %%"),
-                            "Kor. Lokasi (%)":         st.column_config.NumberColumn(format="%.1f %%"),
-                            "Kor. Peruntukan (%)":     st.column_config.NumberColumn(format="%.1f %%"),
-                            "Total Penyesuaian (%)":   st.column_config.NumberColumn(format="%.2f %%"),
-                            "Total Absolut (%)":       st.column_config.NumberColumn(format="%.2f %%"),
-                            "Bobot (%)":               st.column_config.NumberColumn(format="%.1f %%"),
-                            "Luas (m²)":               st.column_config.NumberColumn(format="%.0f m²"),
-                        },
-                    )
+                # ── Compute all adjustments ──────────────────────────────
+                subj_loc_score = _road_total(subj_road_cls, subj_lajur)
 
-                    # ── Result metrics ───────────────────────────────────────────
-                    # Harga Final sudah menyertakan bobot, jadi indikasi = sum(Harga_Final)
-                    harga_indikasi = comp["Harga_Final"].sum()
-                    cv = (
-                        comp["Harga_Stl_Koreksi"].std() / comp["Harga_Stl_Koreksi"].mean() * 100
-                        if len(comp) > 1 and comp["Harga_Stl_Koreksi"].mean() != 0
-                        else 0.0
-                    )
+                # Kepemilikan: SHM vs non-SHM = ±5% (flat, bukan per-ranking)
+                def _kep_adj(comp_kep):
+                    if subj_kep == "SHM" and str(comp_kep) != "SHM":
+                        return 5.0   # pembanding lebih rendah → sesuaikan naik
+                    elif subj_kep != "SHM" and str(comp_kep) == "SHM":
+                        return -5.0  # pembanding lebih tinggi → sesuaikan turun
+                    return 0.0
 
-                    st.divider()
-                    mc1, mc2, mc3 = st.columns(3)
-                    mc1.metric("💰 Harga Indikasi",         format_currency(harga_indikasi) + "/m²")
-                    mc2.metric("📊 Koefisien Variasi (CV)", f"{cv:.1f}%")
-                    mc3.metric("📈 Jumlah Pembanding",      len(comp))
+                comp["Kor_Kepemilikan_%"] = edited["Kepemilikan"].apply(_kep_adj)
+                comp["Kor_Lokasi_%"] = edited.apply(
+                    lambda r: (subj_loc_score - _road_total(r["Kelas Jalan"], r["Jumlah Lajur"])) * lokasi_ppt,
+                    axis=1,
+                )
+                comp["Kor_Peruntukan_%"] = pd.to_numeric(
+                    edited["Kor. Peruntukan (%)"], errors="coerce"
+                ).fillna(0.0).values
 
-                    if cv <= 20:
-                        st.success(f"✅ CV = {cv:.1f}% ≤ 20% → Homogen. Hasil dapat diandalkan.")
-                    elif cv <= 30:
-                        st.warning(f"⚠️ CV = {cv:.1f}% (20–30%) → Cukup beragam. Pertimbangkan tinjau ulang data.")
-                    else:
-                        st.error(f"❌ CV = {cv:.1f}% > 30% → Sangat beragam. Ganti/perbaiki data pembanding.")
+                comp["Selisih_Tahun"]  = ref_year - comp["Tahun_Bersih"].fillna(ref_year)
+                comp["Kor_Waktu_%"]    = comp["Selisih_Tahun"] * time_adj_pct
+                if subj_luas > 0:
+                    comp["Selisih_Luas"] = comp["Luas_Tanah"].fillna(subj_luas) - subj_luas
+                    comp["Kor_Luas_%"]   = -(comp["Selisih_Luas"] / 100) * size_adj_pct
+                else:
+                    comp["Kor_Luas_%"]   = 0.0
 
-                    # ── Bar chart ────────────────────────────────────────────────
-                    fig = go.Figure()
-                    fig.add_trace(go.Bar(x=comp["Nomor"].astype(str), y=comp["Harga_Tanah"],
-                                         name="Harga Awal", marker_color="#a8d8ea"))
-                    fig.add_trace(go.Bar(x=comp["Nomor"].astype(str), y=comp["Harga_Stl_Koreksi"],
-                                         name="Harga Terkoreksi", marker_color="#667eea"))
-                    if subj_harga > 0:
-                        fig.add_hline(y=subj_harga, line_dash="dash", line_color="red",
-                                      annotation_text=f"Harga Obyek: {format_currency(subj_harga)}")
-                    fig.add_hline(y=harga_indikasi, line_dash="dot", line_color="green",
-                                  annotation_text=f"Indikasi: {format_currency(harga_indikasi)}")
-                    fig.update_layout(
-                        title="Perbandingan Harga Data Pembanding",
-                        barmode="group",
-                        xaxis_title="Nomor Data",
-                        yaxis_title="Harga (Rp/m²)",
-                        margin=dict(t=50, b=20),
-                    )
-                    st.plotly_chart(fig, use_container_width=True)
+                # ── Total & bobot penyesuaian ────────────────────────────
+                comp["Kor_Diskon_%"] = -diskon_pct
+                _kor_cols = ["Kor_Diskon_%", "Kor_Waktu_%", "Kor_Luas_%",
+                             "Kor_Kepemilikan_%", "Kor_Lokasi_%", "Kor_Peruntukan_%"]
+                comp["Total_Penyesuaian_%"] = comp[_kor_cols].sum(axis=1).round(2)
+                comp["Total_Absolut_%"]     = comp[_kor_cols].abs().sum(axis=1).round(2)
+                # Bobot: berbanding terbalik dengan total absolut
+                _inv = 1.0 / (comp["Total_Absolut_%"] + 0.01)
+                comp["Bobot_%"] = (_inv / _inv.sum() * 100).round(1)
+                # Harga Final = Harga Awal × (1 + Total Penyesuaian) × Bobot
+                comp["Harga_Stl_Koreksi"] = comp["Harga_Tanah"] * (1 + comp["Total_Penyesuaian_%"] / 100)
+                comp["Harga_Final"]        = comp["Harga_Stl_Koreksi"] * comp["Bobot_%"] / 100
 
-                    # ── Download ─────────────────────────────────────────────────
-                    st.download_button(
-                        label="📥 Download Hasil Perbandingan",
-                        data=to_excel_bytes(tbl),
-                        file_name=f"analisa_perbandingan_{city_label}_{selected_year}.xlsx",
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    )
+    # ── Hasil analisa (lebar penuh) ──────────────────────────────────────────
+    if comp is not None:
+        tbl = comp[[
+            "Nomor", "Alamat", "Tahun_Bersih", "Luas_Tanah",
+            "Harga_Tanah",
+            "Kor_Diskon_%", "Kor_Waktu_%", "Kor_Luas_%",
+            "Kor_Kepemilikan_%", "Kor_Lokasi_%", "Kor_Peruntukan_%",
+            "Total_Penyesuaian_%", "Total_Absolut_%",
+            "Bobot_%",
+            "Harga_Stl_Koreksi",
+            "Harga_Final",
+        ]].copy()
+        tbl.columns = [
+            "Nomor", "Alamat", "Tahun", "Luas (m²)",
+            "Harga Awal",
+            "Kor. Diskon (%)", "Kor. Waktu (%)", "Kor. Luas (%)",
+            "Kor. Kepemilikan (%)", "Kor. Lokasi (%)", "Kor. Peruntukan (%)",
+            "Total Penyesuaian (%)", "Total Absolut (%)",
+            "Bobot (%)",
+            "Harga Terkoreksi",
+            "Harga Final",
+        ]
+
+        # Harga Final sudah menyertakan bobot, jadi indikasi = sum(Harga_Final)
+        harga_indikasi = comp["Harga_Final"].sum()
+        cv = (
+            comp["Harga_Stl_Koreksi"].std() / comp["Harga_Stl_Koreksi"].mean() * 100
+            if len(comp) > 1 and comp["Harga_Stl_Koreksi"].mean() != 0
+            else 0.0
+        )
+        if cv <= 20:
+            cv_badge, cv_note = '<span class="badge ok">Homogen</span>', "Hasil dapat diandalkan."
+        elif cv <= 30:
+            cv_badge, cv_note = '<span class="badge warn">Cukup beragam</span>', "Pertimbangkan meninjau ulang data pembanding."
+        else:
+            cv_badge, cv_note = '<span class="badge bad">Sangat beragam</span>', "Ganti atau perbaiki data pembanding."
+
+        with st.container(border=True):
+            section_title("Hasil analisa", 4)
+            _items = [
+                ("Harga indikasi", rp(harga_indikasi), "Rata-rata tertimbang harga terkoreksi", True),
+                ("Koefisien variasi", f"{cv:.1f}% {cv_badge}", cv_note, False),
+                ("Jumlah pembanding", f"{len(comp)}", "Disarankan 3–5 data", False),
+            ]
+            if subj_harga > 0:
+                _sel = (harga_indikasi - subj_harga) / subj_harga * 100
+                _items.append(("Harga awal obyek", rp(subj_harga), f"Selisih indikasi {_sel:+.1f}%", False))
+            kpi_cards(_items)
+
+            fig = go.Figure()
+            fig.add_trace(go.Bar(x=comp["Nomor"].astype(str), y=comp["Harga_Tanah"],
+                                 name="Harga awal", marker_color="#C9D8E8",
+                                 hovertemplate="Data %{x}<br>Rp %{y:,.0f}/m²<extra>Harga awal</extra>"))
+            fig.add_trace(go.Bar(x=comp["Nomor"].astype(str), y=comp["Harga_Stl_Koreksi"],
+                                 name="Harga terkoreksi", marker_color=NAVY,
+                                 hovertemplate="Data %{x}<br>Rp %{y:,.0f}/m²<extra>Harga terkoreksi</extra>"))
+            if subj_harga > 0:
+                fig.add_hline(y=subj_harga, line_dash="dash", line_color=RED, line_width=1.5,
+                              annotation_text=f"Harga obyek {format_currency(subj_harga)}",
+                              annotation_font_color=RED, annotation_position="top left")
+            fig.add_hline(y=harga_indikasi, line_dash="dot", line_color=TEAL, line_width=2,
+                          annotation_text=f"Indikasi {format_currency(harga_indikasi)}",
+                          annotation_font_color=TEAL, annotation_position="top right")
+            fig.update_layout(barmode="group", bargap=0.3, xaxis_title="Nomor data",
+                              yaxis_title="Harga (Rp/m²)")
+            fig.update_xaxes(type="category")
+            st.plotly_chart(style_fig(fig, "Harga awal dan terkoreksi per data pembanding", height=360),
+                            use_container_width=True, config=PLOT_CFG)
+
+            _pct = st.column_config.NumberColumn(format="%.1f%%")
+            st.dataframe(
+                tbl,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "Tahun":                   st.column_config.NumberColumn(format="%d"),
+                    "Harga Awal":              st.column_config.NumberColumn("Harga Awal (Rp/m²)",       format="localized"),
+                    "Harga Terkoreksi":        st.column_config.NumberColumn("Harga Terkoreksi (Rp/m²)", format="localized"),
+                    "Harga Final":             st.column_config.NumberColumn("Harga Final (Rp/m²)",      format="localized"),
+                    "Kor. Diskon (%)":         _pct,
+                    "Kor. Waktu (%)":          _pct,
+                    "Kor. Luas (%)":           _pct,
+                    "Kor. Kepemilikan (%)":    _pct,
+                    "Kor. Lokasi (%)":         _pct,
+                    "Kor. Peruntukan (%)":     _pct,
+                    "Total Penyesuaian (%)":   st.column_config.NumberColumn(format="%.2f%%"),
+                    "Total Absolut (%)":       st.column_config.NumberColumn(format="%.2f%%"),
+                    "Bobot (%)":               _pct,
+                    "Luas (m²)":               st.column_config.NumberColumn(format="localized"),
+                },
+            )
+
+            st.download_button(
+                label="Unduh hasil analisa (Excel)",
+                icon=":material/download:",
+                data=to_excel_bytes(tbl),
+                file_name=f"analisa_perbandingan_{city_label}_{selected_year}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
