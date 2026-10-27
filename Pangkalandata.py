@@ -4,7 +4,6 @@ import streamlit.components.v1 as components
 import folium
 from folium.plugins import HeatMap
 from streamlit_folium import st_folium
-import plotly.express as px
 import plotly.graph_objects as go
 from io import BytesIO
 import re
@@ -13,7 +12,7 @@ import numpy as np
 st.set_page_config(
     layout="wide",
     initial_sidebar_state="collapsed",
-    page_title="Pangkalan Data Tanah KJPP SRR",
+    page_title="Reviu Penilaian Tanah — KJPP SRR",
     page_icon=":material/landscape:"
 )
 
@@ -134,13 +133,7 @@ div.st-key-topbar {{ min-height:var(--topbar-h) !important; width:100% !importan
 </style>
 """, unsafe_allow_html=True)
 
-YEAR_COLORS = {
-    "gte_2025": TEAL,
-    "gte_2024": NAVY,
-    "gte_2023": AMBER,
-    "lt_2023":  RED,
-    "subject":  NAVY_DK,
-}
+COMP_COLOR = TEAL      # penanda data pembanding di peta
 
 PLOT_FONT = dict(family="Source Sans Pro, Segoe UI, sans-serif", size=12, color="#334155")
 PLOT_CFG  = {"displayModeBar": False}
@@ -244,19 +237,6 @@ def bersihkan_tahun(val):
     except Exception:
         return None
 
-def get_color_by_year(year):
-    try:
-        y = int(year)
-        if y >= 2025:
-            return YEAR_COLORS["gte_2025"]
-        if y >= 2024:
-            return YEAR_COLORS["gte_2024"]
-        if y >= 2023:
-            return YEAR_COLORS["gte_2023"]
-        return YEAR_COLORS["lt_2023"]
-    except Exception:
-        return "gray"
-
 def haversine_km(lat1, lon1, lat2, lon2):
     R = 6371.0
     phi1, phi2 = np.radians(lat1), np.radians(lat2)
@@ -285,7 +265,7 @@ with st.container(key="topbar"):
     tb_brand, tb_file, tb_filter = st.columns([6, 2.4, 1.3], vertical_alignment="center")
 tb_brand.markdown(
     '<div class="brand"><div class="logo">SRR</div><div>'
-    '<div class="t1">Pangkalan Data Tanah</div>'
+    '<div class="t1">Reviu Penilaian Tanah</div>'
     '<div class="t2">KJPP Suwendho Rinaldy dan Rekan</div></div></div>',
     unsafe_allow_html=True,
 )
@@ -300,8 +280,8 @@ if _has_file:
 else:
     st.markdown("""
     <div class="hero">
-      <div class="eyebrow">Reviu Penilaian Tanah</div>
-      <h1>Pangkalan Data Penilaian Tanah</h1>
+      <div class="eyebrow">KJPP Suwendho Rinaldy dan Rekan</div>
+      <h1>Reviu Penilaian Tanah</h1>
       <p>Telaah data pembanding, petakan lokasi terhadap obyek penilaian, dan hitung
          indikasi nilai tanah beserta koefisien variasinya dalam satu tempat.</p>
     </div>
@@ -312,13 +292,11 @@ else:
         st.rerun()  # tampilkan ulang dengan tata letak aplikasi
     st.markdown("""
     <div class="feat-grid">
-      <div class="feat"><div class="n">01</div><h4>Ringkasan</h4>
-        <p>Statistik harga, distribusi, tren per tahun, dan sebaran per kecamatan.</p></div>
-      <div class="feat"><div class="n">02</div><h4>Peta Lokasi</h4>
+      <div class="feat"><div class="n">01</div><h4>Peta Lokasi</h4>
         <p>Obyek dan data pembanding di peta, jarak, foto, serta heatmap harga.</p></div>
-      <div class="feat"><div class="n">03</div><h4>Tabel Data</h4>
+      <div class="feat"><div class="n">02</div><h4>Tabel Data</h4>
         <p>Penelusuran data lengkap, deteksi outlier, dan ekspor ke Excel.</p></div>
-      <div class="feat"><div class="n">04</div><h4>Analisa Perbandingan</h4>
+      <div class="feat"><div class="n">03</div><h4>Analisa Perbandingan</h4>
         <p>Koreksi diskon, waktu, luas, legalitas, lokasi, peruntukan, dan CV.</p></div>
     </div>
     """, unsafe_allow_html=True)
@@ -820,147 +798,14 @@ if filtered.empty:
     st.stop()
 
 # ─── Tabs ─────────────────────────────────────────────────────────────────────
-tab_dashboard, tab_peta, tab_tabel, tab_analisa = st.tabs([
-    ":material/insights: Ringkasan",
+tab_peta, tab_tabel, tab_analisa = st.tabs([
     ":material/map: Peta Lokasi",
     ":material/table_rows: Tabel Data",
     ":material/calculate: Analisa Perbandingan",
 ])
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# TAB 1 — RINGKASAN
-# ═══════════════════════════════════════════════════════════════════════════════
-with tab_dashboard:
-    prices = filtered["Harga_Tanah"].dropna()
-    outlier_count = int(filtered["_outlier"].sum())
-
-    def _rp_or_na(v):
-        return rp(v) if not prices.empty else "—"
-    _cv_mkt = prices.std() / prices.mean() * 100 if len(prices) > 1 and prices.mean() else None
-    kpi_cards([
-        ("Rata-rata harga", _rp_or_na(prices.mean()), f"{len(prices)} data berharga", True),
-        ("Median",          _rp_or_na(prices.median()), None, False),
-        ("Minimum",         _rp_or_na(prices.min()), None, False),
-        ("Maksimum",        _rp_or_na(prices.max()), None, False),
-        ("Sebaran (CV)",    f"{_cv_mkt:.1f}%" if _cv_mkt is not None else "—",
-                            f"{outlier_count} outlier (IQR 1,5×)" if outlier_count else "Tanpa outlier", False),
-    ])
-
-    if outlier_count:
-        st.caption(f":material/warning: {outlier_count} data terdeteksi sebagai outlier — "
-                   "rinciannya tersedia di tab **Tabel Data**.")
-
-    col_l, col_r = st.columns(2, gap="medium")
-
-    with col_l:
-        # Distribusi harga
-        with st.container(border=True):
-            if not prices.empty:
-                fig_hist = px.histogram(
-                    filtered[filtered["Harga_Tanah"].notna()],
-                    x="Harga_Tanah", nbins=20,
-                    labels={"Harga_Tanah": "Harga (Rp/m²)"},
-                    color_discrete_sequence=[NAVY],
-                )
-                fig_hist.update_traces(marker_line_color="white", marker_line_width=1)
-                fig_hist.update_layout(showlegend=False, bargap=0.05, yaxis_title="Jumlah data")
-                st.plotly_chart(style_fig(fig_hist, "Distribusi harga tanah"), use_container_width=True, config=PLOT_CFG)
-            else:
-                st.caption("Belum ada data harga.")
-
-        # Scatter harga vs luas
-        scatter_df = filtered[filtered["Harga_Tanah"].notna() & filtered["Luas_Tanah"].notna()].copy()
-        if not scatter_df.empty:
-            scatter_df["Tahun_Label"] = scatter_df["Tahun_Bersih"].astype("Int64").map(str)
-            with st.container(border=True):
-                fig_scatter = px.scatter(
-                    scatter_df.sort_values("Tahun_Label"), x="Luas_Tanah", y="Harga_Tanah",
-                    color="Tahun_Label",
-                    hover_data=["Nomor", "Alamat", "Kecamatan"],
-                    labels={"Luas_Tanah": "Luas tanah (m²)", "Harga_Tanah": "Harga (Rp/m²)",
-                            "Tahun_Label": "Tahun"},
-                    trendline="ols", trendline_scope="overall",
-                    trendline_color_override=SLATE,
-                    color_discrete_sequence=PLOT_SEQ,
-                )
-                fig_scatter.update_traces(marker=dict(size=9, line=dict(width=1, color="white")),
-                                          selector=dict(mode="markers"))
-                fig_scatter.update_traces(name="Tren (OLS)", selector=dict(mode="lines"))
-                st.plotly_chart(style_fig(fig_scatter, "Harga terhadap luas tanah"),
-                                use_container_width=True, config=PLOT_CFG)
-
-    with col_r:
-        # Tren harga per tahun
-        by_year = (
-            filtered.groupby("Tahun_Bersih")["Harga_Tanah"]
-            .agg(rata_rata="mean", minimum="min", maksimum="max", jumlah="count")
-            .reset_index()
-            .rename(columns={"Tahun_Bersih": "Tahun"})
-            .dropna(subset=["Tahun"])
-            .sort_values("Tahun")
-        )
-        if not by_year.empty:
-            with st.container(border=True):
-                fig_trend = go.Figure()
-                fig_trend.add_trace(go.Scatter(
-                    x=by_year["Tahun"], y=by_year["maksimum"], mode="lines", name="Maksimum",
-                    line=dict(width=0), showlegend=False, hoverinfo="skip",
-                ))
-                fig_trend.add_trace(go.Scatter(
-                    x=by_year["Tahun"], y=by_year["minimum"], mode="lines", name="Rentang min–maks",
-                    line=dict(width=0), fill="tonexty", fillcolor="rgba(31,78,121,0.10)",
-                ))
-                fig_trend.add_trace(go.Scatter(
-                    x=by_year["Tahun"], y=by_year["rata_rata"],
-                    mode="lines+markers", name="Rata-rata",
-                    line=dict(color=NAVY, width=2.5), marker=dict(size=7),
-                    customdata=by_year[["minimum", "maksimum", "jumlah"]],
-                    hovertemplate="Rata-rata: Rp %{y:,.0f}<br>Min: Rp %{customdata[0]:,.0f}"
-                                  "<br>Maks: Rp %{customdata[1]:,.0f}<br>%{customdata[2]} data<extra></extra>",
-                ))
-                fig_trend.update_layout(xaxis_title="Tahun", yaxis_title="Harga (Rp/m²)",
-                                        hovermode="x unified")
-                fig_trend.update_xaxes(dtick=1, tickformat="d")
-                st.plotly_chart(style_fig(fig_trend, "Tren harga per tahun"), use_container_width=True, config=PLOT_CFG)
-
-        # Rata-rata harga per kecamatan
-        by_kec = (
-            filtered.groupby("Kecamatan")["Harga_Tanah"]
-            .agg(["mean", "count"])
-            .dropna()
-            .sort_values("mean", ascending=True)
-            .reset_index()
-        )
-        if not by_kec.empty:
-            with st.container(border=True):
-                fig_kec = go.Figure(go.Bar(
-                    x=by_kec["mean"], y=by_kec["Kecamatan"], orientation="h",
-                    marker_color=NAVY, customdata=by_kec["count"],
-                    hovertemplate="%{y}: Rp %{x:,.0f}/m² (%{customdata} data)<extra></extra>",
-                ))
-                fig_kec.update_layout(xaxis_title="Rata-rata harga (Rp/m²)", yaxis_title=None,
-                                      bargap=0.35)
-                style_fig(fig_kec, "Rata-rata harga per kecamatan",
-                          height=max(340, 60 + 28 * len(by_kec)))
-                fig_kec.update_xaxes(showgrid=True, gridcolor="#EEF2F6", separatethousands=True)
-                fig_kec.update_yaxes(showgrid=False)
-                st.plotly_chart(fig_kec, use_container_width=True, config=PLOT_CFG)
-
-    # Ringkasan statistik
-    num_cols = [c for c in ["Harga_Tanah", "Luas_Tanah", "Luas_Bangunan"] if c in filtered.columns]
-    if num_cols:
-        with st.expander("Ringkasan statistik", icon=":material/functions:"):
-            stats = filtered[num_cols].describe()
-            stats.index = ["Jumlah", "Rata-rata", "Std. deviasi", "Minimum",
-                           "Kuartil 1", "Median", "Kuartil 3", "Maksimum"]
-            stats.columns = [COL_LABELS.get(c, c) for c in stats.columns]
-            st.dataframe(
-                stats, use_container_width=True,
-                column_config={c: st.column_config.NumberColumn(format="localized") for c in stats.columns},
-            )
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# TAB 2 — PETA
+# TAB 1 — PETA
 # ═══════════════════════════════════════════════════════════════════════════════
 with tab_peta:
     map_df = filtered[filtered["Latitude"].notna() & filtered["Longitude"].notna()].copy()
@@ -1047,7 +892,6 @@ with tab_peta:
 
     for r in map_df.itertuples():
         nomor     = str(safe_get(r, "Nomor")).strip()
-        tahun     = getattr(r, "Tahun_Bersih", 0) or 0
         harga_fmt = format_currency(getattr(r, "Harga_Tanah", 0))
 
         if "obyek" in nomor.lower():
@@ -1065,12 +909,11 @@ with tab_peta:
                 ),
             ).add_to(subj_layer)
         else:
-            warna = get_color_by_year(tahun)
             folium.Marker(
                 location=[r.Latitude, r.Longitude],
                 tooltip=f"Data {nomor} · {harga_fmt}/m²",
                 icon=folium.DivIcon(
-                    html=f"""<div style="width:26px;height:26px;border-radius:50%;background:{warna};
+                    html=f"""<div style="width:26px;height:26px;border-radius:50%;background:{COMP_COLOR};
                                 border:2.5px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.4);
                                 display:flex;align-items:center;justify-content:center;
                                 color:#fff;font:700 10px 'Segoe UI',sans-serif">{nomor}</div>""",
@@ -1084,7 +927,7 @@ with tab_peta:
                     icon=folium.DivIcon(
                         html=f"""<div style="font:600 10px/1.25 'Segoe UI',sans-serif;color:#1E293B;
                                     background:rgba(255,255,255,.88);padding:2px 6px;border-radius:4px;
-                                    border-left:3px solid {warna};white-space:nowrap;
+                                    border-left:3px solid {COMP_COLOR};white-space:nowrap;
                                     pointer-events:none;display:inline-block;
                                     box-shadow:0 1px 3px rgba(0,0,0,.15)">{harga_fmt}/m²</div>""",
                         icon_size=(120, 18), icon_anchor=(-16, 9),
@@ -1101,12 +944,8 @@ with tab_peta:
         '<div style="position:fixed;bottom:24px;left:12px;z-index:1000;background:rgba(255,255,255,.96);'
         f'padding:9px 12px;border-radius:8px;border:1px solid {LINE};'
         "font:12px 'Segoe UI',sans-serif;color:#334155;box-shadow:0 2px 8px rgba(0,0,0,.12)\">"
-        '<div style="font-weight:700;margin-bottom:4px;color:#0F2A44">Tahun data</div>'
-        + _lg(YEAR_COLORS["gte_2025"], "2025 ke atas")
-        + _lg(YEAR_COLORS["gte_2024"], "2024")
-        + _lg(YEAR_COLORS["gte_2023"], "2023")
-        + _lg(YEAR_COLORS["lt_2023"], "Sebelum 2023")
         + _lg(NAVY_DK, "Obyek penilaian", "50% 50% 50% 0")
+        + _lg(COMP_COLOR, "Data pembanding")
         + '</div>'
     )
     m.get_root().html.add_child(folium.Element(legend))
@@ -1341,7 +1180,7 @@ with tab_peta:
             components.html("".join(P), height=640, scrolling=False)
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# TAB 3 — TABEL DATA
+# TAB 2 — TABEL DATA
 # ═══════════════════════════════════════════════════════════════════════════════
 with tab_tabel:
     all_cols = [c for c in filtered.columns if not c.startswith("_")]
@@ -1411,7 +1250,7 @@ with tab_tabel:
             )
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# TAB 4 — ANALISA PERBANDINGAN
+# TAB 3 — ANALISA PERBANDINGAN
 # ═══════════════════════════════════════════════════════════════════════════════
 with tab_analisa:
     st.caption("Lengkapi data obyek, atur parameter koreksi, lalu pilih data pembanding. "

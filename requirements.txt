@@ -5,4 +5,3 @@ folium
 streamlit_folium
 plotly
 numpy
-statsmodels
