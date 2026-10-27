@@ -7,13 +7,19 @@ from streamlit_folium import st_folium
 import plotly.graph_objects as go
 from io import BytesIO
 import re
+import base64
+from pathlib import Path
 import numpy as np
+
+LOGO_PATH = Path(__file__).parent / "assets" / "logo_srr.png"
+LOGO_URI  = ("data:image/png;base64," + base64.b64encode(LOGO_PATH.read_bytes()).decode()
+             if LOGO_PATH.exists() else None)
 
 st.set_page_config(
     layout="wide",
     initial_sidebar_state="collapsed",
     page_title="Reviu Penilaian Tanah — KJPP SRR",
-    page_icon=":material/landscape:"
+    page_icon=str(LOGO_PATH) if LOGO_URI else ":material/landscape:"
 )
 
 # ─── Palet & gaya global ─────────────────────────────────────────────────────
@@ -108,7 +114,8 @@ div.st-key-topbar {{ min-height:var(--topbar-h) !important; width:100% !importan
 
 /* Bilah atas */
 .brand {{ display:flex; gap:.65rem; align-items:center; }}
-.brand .logo {{ width:38px; height:38px; border-radius:9px; background:{NAVY}; color:#fff;
+.brand img.logo {{ height:44px; width:auto; display:block; border-radius:2px; }}
+.brand div.logo {{ width:38px; height:38px; border-radius:9px; background:{NAVY}; color:#fff;
                 display:flex; align-items:center; justify-content:center; font-weight:800;
                 font-size:.9rem; letter-spacing:.02em; }}
 .brand .t1 {{ font-weight:700; color:{NAVY_DK}; font-size:.98rem; line-height:1.15; }}
@@ -267,7 +274,9 @@ def safe_get(row, col, default="-"):
 with st.container(key="topbar"):
     tb_brand, tb_file, tb_filter = st.columns([6, 2.4, 1.3], vertical_alignment="center")
 tb_brand.markdown(
-    '<div class="brand"><div class="logo">SRR</div><div>'
+    '<div class="brand">'
+    + (f'<img class="logo" src="{LOGO_URI}" alt="SRR">' if LOGO_URI else '<div class="logo">SRR</div>')
+    + '<div>'
     '<div class="t1">Reviu Penilaian Tanah</div>'
     '<div class="t2">KJPP Suwendho Rinaldy dan Rekan</div></div></div>',
     unsafe_allow_html=True,
