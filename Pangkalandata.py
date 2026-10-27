@@ -60,6 +60,9 @@ div.st-key-topbar {{ min-height:var(--topbar-h) !important; width:100% !importan
   .brand .t2 {{ display:none; }}
   .stTabs [role="tablist"] {{ overflow-x:auto !important; gap:1rem; }}
 }}
+@media (max-width: 480px) {{
+  .brand .t1 {{ display:none; }}  /* layar sangat kecil: cukup logo agar menu file & filter lega */
+}}
 
 /* Header aplikasi */
 .app-header {{ display:flex; align-items:flex-end; justify-content:space-between;
@@ -841,10 +844,8 @@ with tab_peta:
         prefer_canvas=True, control_scale=True,
         tiles=None,
     )
-    folium.TileLayer(
-        tiles="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
-        name="Peta jalan", attr="©OpenStreetMap ©CartoDB",
-    ).add_to(m)
+    # OpenStreetMap: gratis tanpa API key (basemap CARTO kini mewajibkan API key)
+    folium.TileLayer("OpenStreetMap", name="Peta jalan").add_to(m)
     folium.TileLayer(
         tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
         name="Citra satelit", attr="Tiles © Esri",
