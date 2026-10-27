@@ -819,7 +819,7 @@ with tab_dashboard:
         # Scatter harga vs luas
         scatter_df = filtered[filtered["Harga_Tanah"].notna() & filtered["Luas_Tanah"].notna()].copy()
         if not scatter_df.empty:
-            scatter_df["Tahun_Label"] = scatter_df["Tahun_Bersih"].astype("Int64").astype(str)
+            scatter_df["Tahun_Label"] = scatter_df["Tahun_Bersih"].astype("Int64").map(str)
             with st.container(border=True):
                 fig_scatter = px.scatter(
                     scatter_df.sort_values("Tahun_Label"), x="Luas_Tanah", y="Harga_Tanah",
@@ -1304,7 +1304,7 @@ with tab_tabel:
 
     disp_df = filtered[disp_cols].copy() if disp_cols else pd.DataFrame()
     if cari.strip() and not disp_df.empty:
-        _txt = filtered[all_cols].astype(str).agg(" ".join, axis=1).str.lower()
+        _txt = filtered[all_cols].map(str).agg(" ".join, axis=1).str.lower()
         disp_df = disp_df[_txt.str.contains(re.escape(cari.strip().lower()), na=False)]
 
     t3.download_button(
@@ -1332,7 +1332,7 @@ with tab_tabel:
         for c in ("Foto", "Foto_Jalan", "Foto_Dalam", "Foto_Samping_Kanan",
                   "Foto_Samping_Kiri", "Gambar_Situasi"):
             if c in disp_cols:
-                view_df[c] = view_df[c].where(view_df[c].astype(str).str.startswith("http"))
+                view_df[c] = view_df[c].where(view_df[c].map(str).str.startswith("http"))
                 col_cfg[c] = st.column_config.LinkColumn(COL_LABELS.get(c, c), display_text="Buka ↗")
 
         st.caption(f"Menampilkan {len(disp_df)} dari {len(filtered)} baris.")
@@ -1471,13 +1471,14 @@ with tab_analisa:
         if comparable_rows.empty:
             st.warning("Tidak ada data pembanding tersedia.")
         else:
-            nomor_opts = comparable_rows["Nomor"].astype(str).tolist()
-            _lbl = dict(zip(
-                nomor_opts,
-                (comparable_rows["Nomor"].astype(str) + " · " +
-                 comparable_rows.get("Alamat", pd.Series("", index=comparable_rows.index))
-                 .fillna("").astype(str).str.slice(0, 40)).tolist(),
-            ))
+            # map(str) (bukan astype(str)): di pandas 3 astype(str) membiarkan NaN tetap NaN
+            _nomor_str = comparable_rows["Nomor"].map(str)
+            nomor_opts = _nomor_str.tolist()
+            _alamat    = comparable_rows.get("Alamat", pd.Series("", index=comparable_rows.index))
+            _lbl = {
+                n: f"{n} · {str(a)[:40]}" if pd.notna(a) and str(a).strip() else n
+                for n, a in zip(nomor_opts, _alamat)
+            }
             selected   = st.multiselect(
                 "Data pembanding (disarankan 3–5 data)",
                 options=nomor_opts,
@@ -1488,7 +1489,7 @@ with tab_analisa:
             if not selected:
                 st.info("Pilih minimal satu data pembanding untuk memulai perhitungan.")
             else:
-                comp = (comparable_rows[comparable_rows["Nomor"].astype(str).isin(selected)]
+                comp = (comparable_rows[_nomor_str.isin(selected)]
                         .copy().reset_index(drop=True))
 
                 # Auto-hitung Kor. Peruntukan dari kategori penggunaan tanah
@@ -1499,7 +1500,7 @@ with tab_analisa:
                     return round((_subj_perun_score - comp_score) * 2.5, 1)
 
                 edit_init = pd.DataFrame({
-                    "No":                   comp["Nomor"].astype(str).tolist(),
+                    "No":                   comp["Nomor"].map(str).tolist(),
                     "Alamat":               comp["Alamat"].fillna("—").tolist() if "Alamat" in comp.columns else ["—"] * len(comp),
                     "Kepemilikan":          [
                         _detect_kep(comp.at[i, "Kepemilikan"])
@@ -1629,10 +1630,10 @@ with tab_analisa:
             kpi_cards(_items)
 
             fig = go.Figure()
-            fig.add_trace(go.Bar(x=comp["Nomor"].astype(str), y=comp["Harga_Tanah"],
+            fig.add_trace(go.Bar(x=comp["Nomor"].map(str), y=comp["Harga_Tanah"],
                                  name="Harga awal", marker_color="#C9D8E8",
                                  hovertemplate="Data %{x}<br>Rp %{y:,.0f}/m²<extra>Harga awal</extra>"))
-            fig.add_trace(go.Bar(x=comp["Nomor"].astype(str), y=comp["Harga_Stl_Koreksi"],
+            fig.add_trace(go.Bar(x=comp["Nomor"].map(str), y=comp["Harga_Stl_Koreksi"],
                                  name="Harga terkoreksi", marker_color=NAVY,
                                  hovertemplate="Data %{x}<br>Rp %{y:,.0f}/m²<extra>Harga terkoreksi</extra>"))
             if subj_harga > 0:
